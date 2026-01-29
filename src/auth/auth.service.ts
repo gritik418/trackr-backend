@@ -2,11 +2,13 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.schema';
 import { HashingService } from 'src/common/hashing/hashing.service';
+import { EmailProducer } from 'src/queues/email/email.producer';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prismaService: PrismaService,
+    private emailProducer: EmailProducer,
     private readonly hashingService: HashingService,
   ) {}
 
@@ -59,6 +61,11 @@ export class AuthService {
         password: hashedPassword,
         isVerified: false,
       },
+    });
+
+    this.emailProducer.sendVerificationEmail({
+      email,
+      name,
     });
 
     return {
