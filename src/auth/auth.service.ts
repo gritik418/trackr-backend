@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.schema';
@@ -9,10 +10,17 @@ import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
 import { generateVerificationCode } from 'src/common/utils/verification-code.utils';
 import { EmailVerificationDto } from './dto/email-verification.schema';
+import { LoginDto } from './dto/login.schema';
+import { JwtService } from '@nestjs/jwt';
+import { JwtPayload } from './types/jwt-payload.type';
+import { Response } from 'express';
+import { COOKIE_NAME } from 'src/common/constants/cookie-name';
+import { cookieOptions } from 'src/common/constants/cookie-options';
 
 @Injectable()
 export class AuthService {
   constructor(
+    private jwtSerive: JwtService,
     private prismaService: PrismaService,
     private emailProducer: EmailProducer,
     private readonly hashingService: HashingService,
@@ -128,6 +136,42 @@ export class AuthService {
     return {
       success: true,
       message: 'Account verified successfully.',
+    };
+  }
+
+  async login(data: LoginDto, res: Response) {
+    const { identifier, password } = data;
+
+    const user = await this.prismaService.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier, isVerified: true },
+          { username: identifier, isVerified: true },
+        ],
+      },
+    });
+
+    if (!user || !user.isVerified)
+      throw new UnauthorizedException('Invalid credentials.');
+
+    const verify = await this.hashingService.compareHash(
+      password,
+      user.password,
+    );
+
+    if (!verify) throw new UnauthorizedException('Invalid credentials.');
+
+    const payload: JwtPayload = {
+      id: user.id,
+      email: user.email,
+    };
+
+    const token = this.jwtSerive.sign(payload);
+    res.cookie(COOKIE_NAME, token, cookieOptions);
+
+    return {
+      success: true,
+      message: 'Logged in successfully.',
     };
   }
 }

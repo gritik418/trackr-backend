@@ -4,6 +4,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Res,
   UsePipes,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -12,6 +13,8 @@ import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validatio
 import emailVerificationSchema, {
   EmailVerificationDto,
 } from './dto/email-verification.schema';
+import loginSchema, { LoginDto } from './dto/login.schema';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -29,5 +32,12 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(emailVerificationSchema))
   verifyEmail(@Body() data: EmailVerificationDto) {
     return this.authService.verifyEmail(data);
+  }
+
+  @Post('/login')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(loginSchema))
+  login(@Body() data: LoginDto, @Res({ passthrough: true }) res: Response) {
+    return this.authService.login(data, res);
   }
 }
