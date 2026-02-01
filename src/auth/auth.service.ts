@@ -20,6 +20,7 @@ import { ResendVerificationEmailDto } from './dto/resend-verification-email.sche
 import { ForgotPasswordDto } from './dto/forgot-password.schema';
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
+import { ResetPasswordDto } from './dto/reset-password.schema';
 
 @Injectable()
 export class AuthService {
@@ -242,9 +243,7 @@ export class AuthService {
     );
 
     await this.prismaService.user.update({
-      where: {
-        id: user.id,
-      },
+      where: { id: user.id },
       data: {
         passwordResetToken: hashedResetToken,
         passwordResetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
@@ -263,6 +262,46 @@ export class AuthService {
       success: true,
       message:
         'If an account with this email exists, a password reset link has been sent.',
+    };
+  }
+
+  async resetPassword(data: ResetPasswordDto) {
+    const { email, token, password } = data;
+
+    const user = await this.prismaService.user.findFirst({
+      where: { email, isVerified: true },
+    });
+
+    if (!user) throw new NotFoundException('User not found.');
+
+    if (
+      !user.passwordResetToken ||
+      !user.passwordResetTokenExpiry ||
+      user.passwordResetTokenExpiry.getTime() < Date.now()
+    )
+      throw new NotFoundException('Reset link has expired.');
+
+    const verify = await this.hashingService.compareHash(
+      token,
+      user.passwordResetToken,
+    );
+    if (!verify) throw new BadRequestException('Invalid reset link.');
+
+    const hashedPassword = await this.hashingService.hashValue(password);
+
+    await this.prismaService.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        passwordResetToken: null,
+        passwordResetTokenExpiry: null,
+      },
+    });
+
+    return {
+      success: true,
+      message:
+        'Your password has been reset successfully. You can now log in with your new password.',
     };
   }
 }

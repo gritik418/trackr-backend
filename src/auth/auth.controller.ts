@@ -21,6 +21,9 @@ import resendVerificationEmailSchema, {
 import forgotPasswordSchema, {
   ForgotPasswordDto,
 } from './dto/forgot-password.schema';
+import resetPasswordSchema, {
+  ResetPasswordDto,
+} from './dto/reset-password.schema';
 
 @Controller('auth')
 export class AuthController {
@@ -65,5 +68,12 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(forgotPasswordSchema))
   forgotPassword(@Body() data: ForgotPasswordDto) {
     return this.authService.forgotPassword(data);
+  }
+
+  @Post('/reset-password')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(resetPasswordSchema))
+  resetPassword(@Body() data: ResetPasswordDto) {
+    return this.authService.resetPassword(data);
   }
 }
