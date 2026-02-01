@@ -212,4 +212,13 @@ export class AuthService {
       message: 'Verification Email resent successfully.',
     };
   }
+
+  async logout(res: Response) {
+    res.clearCookie(COOKIE_NAME, cookieOptions);
+
+    return {
+      success: true,
+      message: 'Logged out successfully.',
+    };
+  }
 }

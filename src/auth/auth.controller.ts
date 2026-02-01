@@ -50,4 +50,10 @@ export class AuthController {
   resendVerification(@Body() data: ResendVerificationEmailDto) {
     return this.authService.resendVerificationEmail(data);
   }
+
+  @Post('/logout')
+  @HttpCode(HttpStatus.OK)
+  logout(@Res({ passthrough: true }) res: Response) {
+    return this.authService.logout(res);
+  }
 }
