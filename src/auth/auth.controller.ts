@@ -18,6 +18,9 @@ import { Response } from 'express';
 import resendVerificationEmailSchema, {
   ResendVerificationEmailDto,
 } from './dto/resend-verification-email.schema';
+import forgotPasswordSchema, {
+  ForgotPasswordDto,
+} from './dto/forgot-password.schema';
 
 @Controller('auth')
 export class AuthController {
@@ -55,5 +58,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   logout(@Res({ passthrough: true }) res: Response) {
     return this.authService.logout(res);
+  }
+
+  @Post('/forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(forgotPasswordSchema))
+  forgotPassword(@Body() data: ForgotPasswordDto) {
+    return this.authService.forgotPassword(data);
   }
 }

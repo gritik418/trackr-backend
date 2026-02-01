@@ -17,14 +17,18 @@ import { Response } from 'express';
 import { COOKIE_NAME } from 'src/common/constants/cookie-name';
 import { cookieOptions } from 'src/common/constants/cookie-options';
 import { ResendVerificationEmailDto } from './dto/resend-verification-email.schema';
+import { ForgotPasswordDto } from './dto/forgot-password.schema';
+import { v4 as uuidv4 } from 'uuid';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private jwtSerive: JwtService,
-    private prismaService: PrismaService,
-    private emailProducer: EmailProducer,
+    private readonly jwtSerive: JwtService,
+    private readonly prismaService: PrismaService,
+    private readonly emailProducer: EmailProducer,
     private readonly hashingService: HashingService,
+    private readonly configService: ConfigService,
   ) {}
 
   async userRegister(data: RegisterDto) {
@@ -219,6 +223,46 @@ export class AuthService {
     return {
       success: true,
       message: 'Logged out successfully.',
+    };
+  }
+
+  async forgotPassword(data: ForgotPasswordDto) {
+    const { email } = data;
+
+    const user = await this.prismaService.user.findFirst({
+      where: { email, isVerified: true },
+    });
+
+    if (!user) throw new NotFoundException('User not found.');
+
+    const resetToken: string = uuidv4();
+    const hashedResetToken: string = await this.hashingService.hashValue(
+      resetToken,
+      8,
+    );
+
+    await this.prismaService.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        passwordResetToken: hashedResetToken,
+        passwordResetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+
+    const resetLink: string = `${this.configService.get('CLIENT_URL')}/reset-password?token=${resetToken}&email=${user.email}`;
+
+    this.emailProducer.sendForgotPasswordEmail({
+      email,
+      name: user.name,
+      resetLink,
+    });
+
+    return {
+      success: true,
+      message:
+        'If an account with this email exists, a password reset link has been sent.',
     };
   }
 }

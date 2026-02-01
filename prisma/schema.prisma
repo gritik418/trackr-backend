@@ -8,18 +8,20 @@ datasource db {
 }
 
 model User {
-  id                      String     @id @default(cuid())
-  name                    String
-  username                String     @unique
-  email                   String     @unique
-  role                    UserRole   @default(USER)
-  isVerified              Boolean    @default(false)
-  password                String
-  status                  UserStatus @default(ACTIVE)
-  verificationToken       String?
-  verificationTokenExpiry DateTime?
-  createdAt               DateTime   @default(now())
-  updatedAt               DateTime   @updatedAt
+  id                       String     @id @default(cuid())
+  name                     String
+  username                 String     @unique
+  email                    String     @unique
+  role                     UserRole   @default(USER)
+  isVerified               Boolean    @default(false)
+  password                 String
+  status                   UserStatus @default(ACTIVE)
+  verificationToken        String?
+  verificationTokenExpiry  DateTime?
+  passwordResetToken       String?
+  passwordResetTokenExpiry DateTime?
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
 }
 
 enum UserRole {
