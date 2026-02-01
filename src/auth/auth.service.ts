@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.schema';
 import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
+import { generateVerificationCode } from 'src/common/utils/verification-code.utils';
 
 @Injectable()
 export class AuthService {
@@ -51,26 +52,36 @@ export class AuthService {
       },
     });
 
-    const hashedPassword = await this.hashingService.hashValue(password);
+    const hashedPassword: string =
+      await this.hashingService.hashValue(password);
+    const verificationToken: string = generateVerificationCode();
+    const hashedVerificationToken: string = await this.hashingService.hashValue(
+      verificationToken,
+      8,
+    );
 
-    const user = await this.prismaService.user.create({
+    await this.prismaService.user.create({
       data: {
         name,
         email,
         username,
         password: hashedPassword,
         isVerified: false,
+        verificationToken: hashedVerificationToken,
+        verificationTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
       },
     });
 
     this.emailProducer.sendVerificationEmail({
       email,
       name,
+      verificationToken,
     });
 
     return {
       success: true,
-      message: 'User created successfully',
+      message:
+        'Your account has been created! Check your email to verify your account.',
     };
   }
 }
