@@ -1,9 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.schema';
 import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
 import { generateVerificationCode } from 'src/common/utils/verification-code.utils';
+import { EmailVerificationDto } from './dto/email-verification.schema';
 
 @Injectable()
 export class AuthService {
@@ -82,6 +87,47 @@ export class AuthService {
       success: true,
       message:
         'Your account has been created! Check your email to verify your account.',
+    };
+  }
+
+  async verifyEmail(data: EmailVerificationDto) {
+    const { email, otp } = data;
+
+    const user = await this.prismaService.user.findFirst({
+      where: {
+        email,
+        isVerified: false,
+      },
+    });
+
+    if (!user) throw new NotFoundException('User not found.');
+
+    if (
+      !user.verificationTokenExpiry ||
+      !user.verificationToken ||
+      user.verificationTokenExpiry?.getTime() < new Date().getTime()
+    )
+      throw new BadRequestException('OTP Expired.');
+
+    const verify = await this.hashingService.compareHash(
+      otp,
+      user.verificationToken,
+    );
+
+    if (!verify) throw new BadRequestException('Wrong OTP.');
+
+    await this.prismaService.user.update({
+      where: { email },
+      data: {
+        verificationToken: null,
+        verificationTokenExpiry: null,
+        isVerified: true,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Account verified successfully.',
     };
   }
 }
