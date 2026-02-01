@@ -15,6 +15,9 @@ import emailVerificationSchema, {
 } from './dto/email-verification.schema';
 import loginSchema, { LoginDto } from './dto/login.schema';
 import { Response } from 'express';
+import resendVerificationEmailSchema, {
+  ResendVerificationEmailDto,
+} from './dto/resend-verification-email.schema';
 
 @Controller('auth')
 export class AuthController {
@@ -39,5 +42,12 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(loginSchema))
   login(@Body() data: LoginDto, @Res({ passthrough: true }) res: Response) {
     return this.authService.login(data, res);
+  }
+
+  @Post('/resend-verification')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(resendVerificationEmailSchema))
+  resendVerification(@Body() data: ResendVerificationEmailDto) {
+    return this.authService.resendVerificationEmail(data);
   }
 }

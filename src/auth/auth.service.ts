@@ -16,6 +16,7 @@ import { JwtPayload } from './types/jwt-payload.type';
 import { Response } from 'express';
 import { COOKIE_NAME } from 'src/common/constants/cookie-name';
 import { cookieOptions } from 'src/common/constants/cookie-options';
+import { ResendVerificationEmailDto } from './dto/resend-verification-email.schema';
 
 @Injectable()
 export class AuthService {
@@ -172,6 +173,43 @@ export class AuthService {
     return {
       success: true,
       message: 'Logged in successfully.',
+    };
+  }
+
+  async resendVerificationEmail(data: ResendVerificationEmailDto) {
+    const { email } = data;
+
+    const user = await this.prismaService.user.findFirst({
+      where: { email, isVerified: false },
+    });
+
+    if (!user) throw new NotFoundException('User not found.');
+
+    const verificationToken: string = generateVerificationCode();
+    const hashedVerificationToken: string = await this.hashingService.hashValue(
+      verificationToken,
+      8,
+    );
+
+    await this.prismaService.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        verificationToken: hashedVerificationToken,
+        verificationTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+
+    this.emailProducer.sendVerificationEmail({
+      email,
+      name: user.name,
+      verificationToken,
+    });
+
+    return {
+      success: true,
+      message: 'Verification Email resent successfully.',
     };
   }
 }
