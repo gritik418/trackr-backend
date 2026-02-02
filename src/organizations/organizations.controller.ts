@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -17,6 +18,9 @@ import createOrganizationSchema, {
 import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { Request } from 'express';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
+import updateOrganizationSchema, {
+  UpdateOrganizationDto,
+} from './dto/update-organization.schema';
 
 @UseGuards(AuthGuard)
 @Controller('organizations')
@@ -40,5 +44,16 @@ export class OrganizationsController {
   @HttpCode(HttpStatus.OK)
   getOrganization(@Param('orgId') orgId: string, @Req() req: Request) {
     return this.orgrganizationService.getOrganizationById(orgId, req);
+  }
+
+  @Patch('/:orgId')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(updateOrganizationSchema))
+  updateOrganization(
+    @Body() data: UpdateOrganizationDto,
+    @Param('orgId') orgId: string,
+    @Req() req: Request,
+  ) {
+    return this.orgrganizationService.updateOrganization(orgId, data, req);
   }
 }

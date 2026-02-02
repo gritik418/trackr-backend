@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -8,6 +9,7 @@ import { Request } from 'express';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrganizationDto } from './dto/create-organization.schema';
+import { UpdateOrganizationDto } from './dto/update-organization.schema';
 
 @Injectable()
 export class OrganizationsService {
@@ -115,6 +117,58 @@ export class OrganizationsService {
       success: true,
       message: 'Organization retrieved successfully.',
       organization,
+    };
+  }
+
+  async updateOrganization(
+    orgId: string,
+    data: UpdateOrganizationDto,
+    req: Request,
+  ) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!orgId) throw new BadRequestException('Organization ID is required.');
+
+    const organization = await this.prismaService.organization.findUnique({
+      where: { id: orgId },
+      select: { ownerId: true, name: true },
+    });
+    if (!organization) throw new NotFoundException('Organization not found.');
+
+    if (organization.ownerId.toString() !== req.user.id.toString())
+      throw new ForbiddenException('Only organization owner can update.');
+
+    if (data.name !== undefined && data.name !== organization.name) {
+      const existingName = await this.prismaService.organization.findFirst({
+        where: { name: data.name, ownerId: req.user.id, NOT: { id: orgId } },
+      });
+
+      if (existingName)
+        throw new BadRequestException(
+          'You have used the same name for another organization.',
+        );
+    }
+
+    const updates: UpdateOrganizationDto = {};
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.logoUrl !== undefined) updates.logoUrl = data.logoUrl;
+    if (data.websiteUrl !== undefined) updates.websiteUrl = data.websiteUrl;
+
+    const org = await this.prismaService.organization.update({
+      where: { id: orgId },
+      data: { ...updates },
+      include: { members: { include: { user: true } }, owner: true },
+    });
+
+    const orgSanitized = {
+      ...org,
+      owner: sanitizeUser(org.owner),
+      members: org.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
+    };
+    return {
+      success: true,
+      message: 'Organization updated successfully.',
+      organization: orgSanitized,
     };
   }
 }
