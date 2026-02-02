@@ -90,4 +90,32 @@ export class WorkspacesService {
       workspace: workspaceSanitized,
     };
   }
+
+  async getWorkspaces(orgId: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!orgId) throw new BadRequestException('Organization ID is required.');
+
+    const workspaces = await this.prismaService.workspace.findMany({
+      where: {
+        organizationId: orgId,
+        members: { some: { userId: req.user.id } },
+      },
+      include: {
+        owner: true,
+        members: { include: { user: true } },
+      },
+    });
+
+    const sanitizedWorkspaces = workspaces.map((w) => ({
+      ...w,
+      owner: sanitizeUser(w.owner),
+      members: w.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
+    }));
+
+    return {
+      success: true,
+      message: 'Workspaces retrieved successfully.',
+      workspaces: sanitizedWorkspaces,
+    };
+  }
 }

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   Post,
   Req,
@@ -28,5 +29,10 @@ export class WorkspacesController {
     @Req() req: Request,
   ) {
     return this.workspaceService.createWorkspace(orgId, data, req);
+  }
+
+  @Get('/')
+  getWorkspaces(@Param('orgId') orgId: string, @Req() req: Request) {
+    return this.workspaceService.getWorkspaces(orgId, req);
   }
 }

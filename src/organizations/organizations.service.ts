@@ -98,7 +98,7 @@ export class OrganizationsService {
     if (!orgId) throw new BadRequestException('Organization ID is required');
 
     const org = await this.prismaService.organization.findFirst({
-      where: { id: orgId },
+      where: { id: orgId, members: { some: { userId: req.user.id } } },
       include: {
         owner: true,
         members: { include: { user: true } },
