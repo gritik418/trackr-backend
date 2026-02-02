@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Req,
@@ -22,6 +24,7 @@ export class WorkspacesController {
   constructor(private readonly workspaceService: WorkspacesService) {}
 
   @Post('/')
+  @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(createWorkspaceSchema))
   createWorkspace(
     @Param('orgId') orgId: string,
@@ -32,11 +35,13 @@ export class WorkspacesController {
   }
 
   @Get('/')
+  @HttpCode(HttpStatus.OK)
   getWorkspaces(@Param('orgId') orgId: string, @Req() req: Request) {
     return this.workspaceService.getWorkspaces(orgId, req);
   }
 
   @Get('/:workspaceId')
+  @HttpCode(HttpStatus.OK)
   getWorkspace(
     @Param('orgId') orgId: string,
     @Param('workspaceId') workspaceId: string,

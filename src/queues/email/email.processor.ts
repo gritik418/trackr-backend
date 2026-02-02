@@ -36,7 +36,15 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
   }
 
   private getTemplatePath(template: string): string {
-    const distPath = join(__dirname, 'templates', `${template}.hbs`);
+    const distPath = join(
+      process.cwd(),
+      'dist',
+      'queues',
+      'email',
+      'templates',
+      `${template}.hbs`,
+    );
+
     const srcPath = join(
       process.cwd(),
       'src',
