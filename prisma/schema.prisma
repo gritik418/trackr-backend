@@ -16,12 +16,109 @@ model User {
   isVerified               Boolean    @default(false)
   password                 String
   status                   UserStatus @default(ACTIVE)
+  avatarUrl                String?
   verificationToken        String?
   verificationTokenExpiry  DateTime?
   passwordResetToken       String?
   passwordResetTokenExpiry DateTime?
   createdAt                DateTime   @default(now())
   updatedAt                DateTime   @updatedAt
+
+  organizations       Organization[]
+  organizationMembers OrganizationMember[]
+  workspaceMembers    WorkspaceMember[]
+
+  assignedTasks Task[] @relation("AssignedTasks")
+  createdTasks  Task[] @relation("CreatedTasks")
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logoUrl     String?
+  website     String?
+  description String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner      User                 @relation(fields: [ownerId], references: [id])
+  members    OrganizationMember[]
+  workspaces Workspace[]
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrgRole  @default(MEMBER)
+  joinedAt       DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+model Workspace {
+  id             String   @id @default(cuid())
+  name           String
+  organizationId String
+  iconUrl        String?
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        WorkspaceMember[]
+  tasks          Task[]
+  taskCategories TaskCategory[]
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model Task {
+  id           String     @id @default(cuid())
+  title        String
+  description  String?
+  status       TaskStatus @default(TODO)
+  workspaceId  String
+  assignedToId String?
+  categoryId   String?
+  createdById  String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  workspace  Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assignedTo User?         @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdBy  User          @relation("CreatedTasks", fields: [createdById], references: [id])
+  category   TaskCategory? @relation(fields: [categoryId], references: [id])
+}
+
+model TaskCategory {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  tasks     Task[]
+
+  @@unique([workspaceId, name])
 }
 
 enum UserRole {
@@ -33,4 +130,25 @@ enum UserStatus {
   ACTIVE
   INACTIVE
   BANNED
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum WorkspaceRole {
+  ADMIN
+  MEMBER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  BLOCKED
+  ON_HOLD
+  DONE
+  CANCELED
 }
