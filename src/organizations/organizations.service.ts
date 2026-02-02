@@ -58,4 +58,18 @@ export class OrganizationsService {
       organization: org,
     };
   }
+
+  async getOrganizations(req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+
+    const organizations = await this.prismaService.organization.findMany({
+      where: { members: { some: { userId: req.user.id } } },
+    });
+
+    return {
+      success: true,
+      message: 'Organizations retrieved successfully.',
+      organizations,
+    };
+  }
 }

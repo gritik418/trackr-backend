@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -26,5 +27,11 @@ export class OrganizationsController {
   @UsePipes(new ZodValidationPipe(createOrganizationSchema))
   create(@Body() data: CreateOrganizationDto, @Req() req: Request) {
     return this.orgrganizationService.createOrganization(data, req);
+  }
+
+  @Get('/')
+  @HttpCode(HttpStatus.OK)
+  getOrganizations(@Req() req: Request) {
+    return this.orgrganizationService.getOrganizations(req);
   }
 }
