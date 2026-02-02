@@ -171,4 +171,25 @@ export class OrganizationsService {
       organization: orgSanitized,
     };
   }
+
+  async deleteOrganization(orgId: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+
+    const organization = await this.prismaService.organization.findUnique({
+      where: { id: orgId },
+      select: { ownerId: true },
+    });
+    if (!organization) throw new NotFoundException('Organization not found.');
+
+    if (organization.ownerId.toString() !== req.user.id.toString())
+      throw new ForbiddenException('Only organization owner can delete.');
+
+    await this.prismaService.organization.delete({ where: { id: orgId } });
+
+    return {
+      success: true,
+      message: 'Organization deleted successfully.',
+    };
+  }
 }

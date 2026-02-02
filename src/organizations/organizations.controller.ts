@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -55,5 +56,11 @@ export class OrganizationsController {
     @Req() req: Request,
   ) {
     return this.orgrganizationService.updateOrganization(orgId, data, req);
+  }
+
+  @Delete('/:orgId')
+  @HttpCode(HttpStatus.OK)
+  deleteOrganization(@Param('orgId') orgId: string, @Req() req: Request) {
+    return this.orgrganizationService.deleteOrganization(orgId, req);
   }
 }
