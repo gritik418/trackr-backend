@@ -9,6 +9,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { EmailModule } from './queues/email/email.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module';
     EmailModule,
     OrganizationsModule,
     WorkspacesModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
