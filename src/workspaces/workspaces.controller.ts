@@ -35,4 +35,13 @@ export class WorkspacesController {
   getWorkspaces(@Param('orgId') orgId: string, @Req() req: Request) {
     return this.workspaceService.getWorkspaces(orgId, req);
   }
+
+  @Get('/:workspaceId')
+  getWorkspace(
+    @Param('orgId') orgId: string,
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.getWorkspaceById(orgId, workspaceId, req);
+  }
 }
