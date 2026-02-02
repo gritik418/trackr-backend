@@ -1,11 +1,13 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Request } from 'express';
+import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrganizationDto } from './dto/create-organization.schema';
-import { Request } from 'express';
 
 @Injectable()
 export class OrganizationsService {
@@ -49,27 +51,70 @@ export class OrganizationsService {
           },
         },
       },
-      include: { members: true },
+      include: { members: { include: { user: true } }, owner: true },
     });
+
+    const orgSanitized = {
+      ...org,
+      owner: sanitizeUser(org.owner),
+      members: org.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
+    };
 
     return {
       success: true,
       message: 'Organization created successfully.',
-      organization: org,
+      organization: orgSanitized,
     };
   }
 
-  async getOrganizations(req: Request) {
+  async getUserOrganizations(req: Request) {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
 
-    const organizations = await this.prismaService.organization.findMany({
+    const orgs = await this.prismaService.organization.findMany({
       where: { members: { some: { userId: req.user.id } } },
+      include: { members: { include: { user: true } }, owner: true },
+    });
+
+    const organizations = orgs.map((org) => {
+      const owner = sanitizeUser(org.owner);
+      const members = org.members.map((m) => ({
+        ...m,
+        user: sanitizeUser(m.user),
+      }));
+      return { ...org, owner, members };
     });
 
     return {
       success: true,
       message: 'Organizations retrieved successfully.',
       organizations,
+    };
+  }
+
+  async getOrganizationById(orgId: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+
+    const org = await this.prismaService.organization.findFirst({
+      where: { id: orgId },
+      include: {
+        owner: true,
+        members: { include: { user: true } },
+        workspaces: true,
+      },
+    });
+    if (!org) throw new NotFoundException('Organization not found.');
+
+    const organization = {
+      ...org,
+      owner: sanitizeUser(org.owner),
+      members: org.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
+    };
+
+    return {
+      success: true,
+      message: 'Organization retrieved successfully.',
+      organization,
     };
   }
 }

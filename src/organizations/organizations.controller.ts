@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
   UseGuards,
@@ -32,6 +33,12 @@ export class OrganizationsController {
   @Get('/')
   @HttpCode(HttpStatus.OK)
   getOrganizations(@Req() req: Request) {
-    return this.orgrganizationService.getOrganizations(req);
+    return this.orgrganizationService.getUserOrganizations(req);
+  }
+
+  @Get('/:orgId')
+  @HttpCode(HttpStatus.OK)
+  getOrganization(@Param('orgId') orgId: string, @Req() req: Request) {
+    return this.orgrganizationService.getOrganizationById(orgId, req);
   }
 }
