@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { HashingModule } from './common/hashing/hashing.module';
 import { BullModule } from '@nestjs/bullmq';
 import { EmailModule } from './queues/email/email.module';
+import { OrganizationsModule } from './organizations/organizations.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EmailModule } from './queues/email/email.module';
     AuthModule,
     HashingModule,
     EmailModule,
+    OrganizationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

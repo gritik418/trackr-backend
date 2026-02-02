@@ -37,7 +37,7 @@ model Organization {
   name        String
   slug        String   @unique
   logoUrl     String?
-  website     String?
+  websiteUrl  String?
   description String?
   ownerId     String
   createdAt   DateTime @default(now())
