@@ -8,6 +8,7 @@ import { HashingModule } from './common/hashing/hashing.module';
 import { BullModule } from '@nestjs/bullmq';
 import { EmailModule } from './queues/email/email.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { WorkspacesModule } from './workspaces/workspaces.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
     HashingModule,
     EmailModule,
     OrganizationsModule,
+    WorkspacesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -25,6 +25,7 @@ model User {
   updatedAt                DateTime   @updatedAt
 
   organizations       Organization[]
+  workspaces          Workspace[]
   organizationMembers OrganizationMember[]
   workspaceMembers    WorkspaceMember[]
 
@@ -65,11 +66,14 @@ model Workspace {
   id             String   @id @default(cuid())
   name           String
   organizationId String
+  slug           String   @unique
   iconUrl        String?
   description    String?
+  ownerId        String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  owner          User              @relation(fields: [ownerId], references: [id])
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members        WorkspaceMember[]
   tasks          Task[]
@@ -139,6 +143,7 @@ enum OrgRole {
 }
 
 enum WorkspaceRole {
+  OWNER
   ADMIN
   MEMBER
 }
