@@ -11,6 +11,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { UserModule } from './user/user.module';
 import { CloudinaryModule } from './providers/cloudinary/cloudinary.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CloudinaryModule } from './providers/cloudinary/cloudinary.module';
     WorkspacesModule,
     UserModule,
     CloudinaryModule,
+    TasksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
