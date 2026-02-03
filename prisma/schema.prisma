@@ -17,6 +17,7 @@ model User {
   password                 String
   status                   UserStatus @default(ACTIVE)
   avatarUrl                String?
+  avatarPublicId           String?
   verificationToken        String?
   verificationTokenExpiry  DateTime?
   passwordResetToken       String?

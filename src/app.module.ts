@@ -10,6 +10,7 @@ import { EmailModule } from './queues/email/email.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { UserModule } from './user/user.module';
+import { CloudinaryModule } from './providers/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { UserModule } from './user/user.module';
     OrganizationsModule,
     WorkspacesModule,
     UserModule,
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
