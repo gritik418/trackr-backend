@@ -10,12 +10,15 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CloudinaryService } from 'src/providers/cloudinary/cloudinary.service';
 import { avatarUploadOptions } from './uploads/avatar.upload';
 import { UpdateUserDto } from './dto/update-user.schema';
+import { ChangePasswordDto } from './dto/change-password.schema';
+import { HashingService } from 'src/common/hashing/hashing.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly hashingService: HashingService,
   ) {}
 
   async getUserProfile(req: Request) {
@@ -130,6 +133,46 @@ export class UserService {
       success: true,
       message: 'User updated successfully.',
       user: sanitizedUser,
+    };
+  }
+
+  async changePassword(data: ChangePasswordDto, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+
+    const user = await this.prismaService.user.findFirst({
+      where: { id: req.user.id, isVerified: true },
+      select: { id: true, password: true },
+    });
+    if (!user) throw new NotFoundException('User not found.');
+
+    const { oldPassword, password } = data;
+
+    const verifyOldPassword = await this.hashingService.compareHash(
+      oldPassword,
+      user.password,
+    );
+
+    if (!verifyOldPassword)
+      throw new BadRequestException('Invalid credentials.');
+
+    if (await this.hashingService.compareHash(password, user.password)) {
+      throw new BadRequestException(
+        'New password must be different from old password.',
+      );
+    }
+
+    const hashedPassword = await this.hashingService.hashValue(password);
+
+    await this.prismaService.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Password changed successfully.',
     };
   }
 }

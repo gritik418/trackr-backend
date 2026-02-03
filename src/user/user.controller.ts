@@ -18,6 +18,9 @@ import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
 import updateUserSchema, { UpdateUserDto } from './dto/update-user.schema';
+import changePasswordSchema, {
+  ChangePasswordDto,
+} from './dto/change-password.schema';
 
 @UseGuards(AuthGuard)
 @Controller('user')
@@ -56,5 +59,12 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   updateAvatar(@UploadedFile() file: Express.Multer.File, @Req() req: Request) {
     return this.userService.updateUserAvatar(file, req);
+  }
+
+  @Patch('/change-password')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(changePasswordSchema))
+  changePassword(@Body() data: ChangePasswordDto, @Req() req: Request) {
+    return this.userService.changePassword(data, req);
   }
 }
