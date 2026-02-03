@@ -1,11 +1,16 @@
 services:
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev # change to Dockerfile for Prod
     container_name: trackr-api
     ports:
       - '3000:3000'
     env_file:
       - .env
+    volumes:
+      - .:/app
+      - /app/node_modules
     depends_on:
       db:
         condition: service_healthy

@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -22,10 +23,12 @@ export class UserService {
 
     if (!user) throw new NotFoundException('User not found.');
 
+    const sanitizedUser = sanitizeUser(user);
+
     return {
       success: true,
       message: 'User retrieved successfully.',
-      user,
+      user: sanitizedUser,
     };
   }
 }
