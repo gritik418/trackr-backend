@@ -9,6 +9,7 @@ import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CloudinaryService } from 'src/providers/cloudinary/cloudinary.service';
 import { avatarUploadOptions } from './uploads/avatar.upload';
+import { UpdateUserDto } from './dto/update-user.schema';
 
 @Injectable()
 export class UserService {
@@ -43,10 +44,10 @@ export class UserService {
     if (!file) throw new BadRequestException('Avatar image is required');
 
     const user = await this.prismaService.user.findUnique({
-      where: { id: req.user.id },
+      where: { id: req.user.id, isVerified: true },
       select: { avatarPublicId: true },
     });
-    if (!user) throw new UnauthorizedException('Unauthenticated');
+    if (!user) throw new NotFoundException('User not found.');
 
     if (user.avatarPublicId) {
       await this.cloudinaryService.deleteImage(user.avatarPublicId);
@@ -73,6 +74,62 @@ export class UserService {
       success: true,
       message: 'Avatar updated successfully.',
       url: avatar.url,
+    };
+  }
+
+  async updateUser(data: UpdateUserDto, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+
+    const user = await this.prismaService.user.findFirst({
+      where: { id: req.user.id, isVerified: true },
+      select: { id: true },
+    });
+    if (!user) throw new NotFoundException('User not found.');
+
+    const updates: UpdateUserDto = {};
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.username !== undefined) updates.username = data.username;
+
+    if (!Object.keys(updates).length) {
+      throw new BadRequestException('No data provided to update.');
+    }
+
+    if (data.username !== undefined) {
+      const existingUsername = await this.prismaService.user.findFirst({
+        where: {
+          username: data.username,
+          NOT: { id: req.user.id },
+        },
+      });
+
+      if (existingUsername) {
+        console.log(existingUsername);
+        if (
+          existingUsername?.isVerified ||
+          (existingUsername?.verificationTokenExpiry &&
+            existingUsername?.verificationTokenExpiry.getTime() >=
+              new Date().getTime())
+        ) {
+          throw new BadRequestException('Username already taken.');
+        }
+
+        await this.prismaService.user.delete({
+          where: { id: existingUsername.id },
+        });
+      }
+    }
+
+    const updatedUser = await this.prismaService.user.update({
+      where: { id: user.id },
+      data: updates,
+    });
+
+    const sanitizedUser = sanitizeUser(updatedUser);
+
+    return {
+      success: true,
+      message: 'User updated successfully.',
+      user: sanitizedUser,
     };
   }
 }

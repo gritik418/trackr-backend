@@ -15,17 +15,6 @@ const updateUserSchema = z.object({
       'Username can only contain letters, numbers, and underscores',
     )
     .optional(),
-  avatarFile: z
-    .instanceof(File)
-    .refine(
-      (file) => file.size <= 2 * 1024 * 1024,
-      'Image must be less than 2MB',
-    )
-    .refine(
-      (file) => file.type.startsWith('image/'),
-      'Only image files are allowed',
-    )
-    .optional(),
 });
 export type UpdateUserDto = z.infer<typeof updateUserSchema>;
 

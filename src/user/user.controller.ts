@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -9,11 +10,14 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  UsePipes,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { Request } from 'express';
 import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
+import updateUserSchema, { UpdateUserDto } from './dto/update-user.schema';
 
 @UseGuards(AuthGuard)
 @Controller('user')
@@ -24,6 +28,13 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   getUser(@Req() req: Request) {
     return this.userService.getUserProfile(req);
+  }
+
+  @Patch('/')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(updateUserSchema))
+  updateUser(@Body() data: UpdateUserDto, @Req() req: Request) {
+    return this.userService.updateUser(data, req);
   }
 
   @Patch('/avatar')
