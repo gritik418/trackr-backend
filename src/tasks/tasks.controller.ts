@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -29,5 +30,11 @@ export class TasksController {
     @Req() req: Request,
   ) {
     return this.tasksService.createTask(workspacesId, data, req);
+  }
+
+  @Get('/')
+  @HttpCode(HttpStatus.OK)
+  getTasks(@Param('workspacesId') workspacesId: string) {
+    return this.tasksService.getTasks(workspacesId);
   }
 }

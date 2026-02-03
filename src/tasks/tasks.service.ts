@@ -7,6 +7,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.schema';
 import { Request } from 'express';
+import { sanitizeUser } from 'src/common/utils/sanitize-user';
 
 @Injectable()
 export class TasksService {
@@ -53,6 +54,46 @@ export class TasksService {
       success: true,
       message: 'Task created successfully.',
       task,
+    };
+  }
+
+  async getTasks(workspaceId: string) {
+    if (!workspaceId)
+      throw new BadRequestException('Workspace ID is required.');
+
+    const workspace = await this.prismaService.workspace.findUnique({
+      where: {
+        id: workspaceId,
+      },
+      select: { id: true },
+    });
+    if (!workspace) throw new NotFoundException('Workspace not found.');
+
+    const tasks = await this.prismaService.task.findMany({
+      where: { workspaceId },
+      include: {
+        assignedTo: true,
+        createdBy: true,
+        category: true,
+        workspace: true,
+      },
+    });
+
+    const sanitizedTasks = tasks.map((task) => {
+      const assignedTo = task.assignedTo ? sanitizeUser(task.assignedTo) : null;
+      const createdBy = task.createdBy ? sanitizeUser(task.createdBy) : null;
+
+      return {
+        ...task,
+        assignedTo,
+        createdBy,
+      };
+    });
+
+    return {
+      success: true,
+      message: 'Tasks retrieved successfully.',
+      tasks: sanitizedTasks,
     };
   }
 }
