@@ -17,7 +17,7 @@ import { TasksService } from './tasks.service';
 import { Request } from 'express';
 
 @UseGuards(AuthGuard)
-@Controller('workspaces/:workspacesId/tasks')
+@Controller('workspaces/:workspaceId/tasks')
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
@@ -25,16 +25,26 @@ export class TasksController {
   @UsePipes(new ZodValidationPipe(createTaskSchema))
   @HttpCode(HttpStatus.CREATED)
   createTask(
-    @Param('workspacesId') workspacesId: string,
+    @Param('workspaceId') workspaceId: string,
     @Body() data: CreateTaskDto,
     @Req() req: Request,
   ) {
-    return this.tasksService.createTask(workspacesId, data, req);
+    return this.tasksService.createTask(workspaceId, data, req);
   }
 
   @Get('/')
   @HttpCode(HttpStatus.OK)
-  getTasks(@Param('workspacesId') workspacesId: string) {
-    return this.tasksService.getTasks(workspacesId);
+  getTasks(@Param('workspaceId') workspaceId: string) {
+    return this.tasksService.getTasks(workspaceId);
+  }
+
+  @Get('/:taskId')
+  @HttpCode(HttpStatus.OK)
+  getTaskDetails(
+    @Param('workspaceId') workspaceId: string,
+    @Param('taskId') taskId: string,
+    @Req() req: Request,
+  ) {
+    return this.tasksService.getTaskById(taskId, workspaceId, req);
   }
 }

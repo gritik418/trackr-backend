@@ -96,4 +96,40 @@ export class TasksService {
       tasks: sanitizedTasks,
     };
   }
+
+  async getTaskById(taskId: string, workspaceId: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+
+    if (!workspaceId)
+      throw new BadRequestException('Workspace ID is required.');
+
+    if (!taskId) throw new BadRequestException('Task ID is required.');
+
+    const task = await this.prismaService.task.findFirst({
+      where: {
+        id: taskId,
+        workspaceId: workspaceId,
+        workspace: { members: { some: { user: { id: req.user.id } } } },
+      },
+      include: {
+        workspace: true,
+        assignedTo: true,
+        createdBy: true,
+        category: true,
+      },
+    });
+    if (!task) throw new NotFoundException('Task not found.');
+
+    const sanitizedTask = {
+      ...task,
+      assignedTo: task.assignedTo ? sanitizeUser(task.assignedTo) : null,
+      createdBy: task.createdBy ? sanitizeUser(task.createdBy) : null,
+    };
+
+    return {
+      success: true,
+      message: 'Task retrieved successfully.',
+      task: sanitizedTask,
+    };
+  }
 }
