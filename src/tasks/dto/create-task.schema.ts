@@ -2,26 +2,39 @@ import { z } from 'zod';
 
 const taskStatusEnum = z.enum([
   'TODO',
-  'DONE',
+  'IN_PROGRESS',
+  'IN_REVIEW',
   'BLOCKED',
   'ON_HOLD',
+  'DONE',
   'CANCELED',
-  'IN_REVIEW',
-  'IN_PROGRESS',
 ]);
+
+const taskPriorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
 
 const createTaskSchema = z.object({
   title: z
     .string()
     .min(1, 'Title is required.')
     .max(150, "Title can't exceed 150 characters."),
-  description: z
-    .string()
-    .max(1000, "Description can't exceed 1000 characters.")
-    .optional(),
+
+  description: z.string().optional(),
   status: taskStatusEnum.optional(),
+  priority: taskPriorityEnum.optional(),
+  deadline: z.iso.datetime().optional(),
+
   assignedToId: z.cuid().optional(),
+
   categoryId: z.cuid().optional(),
+
+  links: z
+    .array(
+      z.object({
+        title: z.string().max(150).optional(),
+        url: z.url('Invalid URL'),
+      }),
+    )
+    .optional(),
 });
 
 export type CreateTaskDto = z.infer<typeof createTaskSchema>;

@@ -14,40 +14,138 @@ export class TasksService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async createTask(workspaceId: string, data: CreateTaskDto, req: Request) {
-    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    const userId = req.user?.id;
+    if (!userId || typeof userId === undefined)
+      throw new UnauthorizedException('Unauthenticated');
+
     if (!workspaceId)
       throw new BadRequestException('Workspace ID is required.');
 
     const workspace = await this.prismaService.workspace.findUnique({
-      where: {
-        id: workspaceId,
+      where: { id: workspaceId },
+      include: {
+        members: {
+          where: { userId: userId },
+        },
       },
-      include: { members: { where: { user: { id: req.user.id } } } },
     });
-    if (!workspace) throw new NotFoundException('Workspace not found.');
 
+    if (!workspace) throw new NotFoundException('Workspace not found.');
     if (!workspace.members.length)
       throw new UnauthorizedException(
         'Only workspace members can create tasks.',
       );
 
-    if (!['ADMIN', 'OWNER'].includes(workspace.members[0].role))
+    const member = workspace.members[0];
+
+    if (!['OWNER', 'ADMIN'].includes(member.role))
       throw new UnauthorizedException(
         'Only workspace owner/admin can create tasks.',
       );
 
-    const { title, description, status, assignedToId, categoryId } = data;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      deadline,
+      assignedToId,
+      categoryId,
+      links,
+    } = data;
 
-    const task = await this.prismaService.task.create({
-      data: {
-        title,
-        description,
-        workspaceId,
-        status: status,
-        assignedToId: assignedToId || null,
-        categoryId: categoryId || null,
-        createdById: req.user.id,
-      },
+    if (assignedToId) {
+      const isValidAssignee =
+        await this.prismaService.workspaceMember.findFirst({
+          where: {
+            workspaceId,
+            userId: assignedToId,
+          },
+        });
+
+      if (!isValidAssignee)
+        throw new BadRequestException(
+          'Assigned user is not a member of this workspace.',
+        );
+    }
+
+    const task = await this.prismaService.$transaction(async (tx) => {
+      const task = await tx.task.create({
+        data: {
+          title,
+          description,
+          status,
+          priority,
+          deadline: deadline ? new Date(deadline) : null,
+          workspaceId,
+          assignedToId: assignedToId || null,
+          categoryId: categoryId || null,
+          createdById: userId,
+          links: links
+            ? {
+                create: links.map((link) => ({
+                  title: link.title,
+                  url: link.url,
+                })),
+              }
+            : undefined,
+        },
+        include: {
+          links: true,
+        },
+      });
+
+      await tx.taskActivity.create({
+        data: {
+          taskId: task.id,
+          userId: userId,
+          type: 'CREATED',
+        },
+      });
+
+      if (assignedToId) {
+        await tx.taskActivity.create({
+          data: {
+            taskId: task.id,
+            userId: userId,
+            type: 'ASSIGNED',
+            meta: {
+              from: null,
+              to: assignedToId,
+            },
+          },
+        });
+      }
+
+      if (priority) {
+        await tx.taskActivity.create({
+          data: {
+            taskId: task.id,
+            userId: userId,
+            type: 'PRIORITY_CHANGED',
+            meta: {
+              from: null,
+              to: priority,
+            },
+          },
+        });
+      }
+
+      if (deadline) {
+        await tx.taskActivity.create({
+          data: {
+            taskId: task.id,
+            userId: userId,
+            type: 'DEADLINE_CHANGED',
+            meta: {
+              from: null,
+              to: deadline,
+            },
+          },
+        });
+      }
+
+      return task;
     });
 
     return {
@@ -116,6 +214,10 @@ export class TasksService {
         assignedTo: true,
         createdBy: true,
         category: true,
+        activities: true,
+        comments: true,
+        attachments: true,
+        links: true,
       },
     });
     if (!task) throw new NotFoundException('Task not found.');

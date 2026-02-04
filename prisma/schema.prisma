@@ -30,6 +30,10 @@ model User {
   organizationMembers OrganizationMember[]
   workspaceMembers    WorkspaceMember[]
 
+  taskComments    TaskComment[]
+  taskActivities  TaskActivity[]
+  taskAttachments TaskAttachment[]
+
   assignedTasks Task[] @relation("AssignedTasks")
   createdTasks  Task[] @relation("CreatedTasks")
 }
@@ -95,21 +99,81 @@ model WorkspaceMember {
 }
 
 model Task {
-  id           String     @id @default(cuid())
-  title        String
-  description  String?
-  status       TaskStatus @default(TODO)
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  deadline    DateTime?
+
   workspaceId  String
   assignedToId String?
   categoryId   String?
   createdById  String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  attachments TaskAttachment[]
+  links       TaskLink[]
+  comments    TaskComment[]
+  activities  TaskActivity[]
 
   workspace  Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   assignedTo User?         @relation("AssignedTasks", fields: [assignedToId], references: [id])
   createdBy  User          @relation("CreatedTasks", fields: [createdById], references: [id])
   category   TaskCategory? @relation(fields: [categoryId], references: [id])
+}
+
+model TaskAttachment {
+  id           String  @id @default(cuid())
+  taskId       String
+  name         String
+  url          String
+  type         String?
+  size         Int?
+  uploadedById String
+
+  createdAt DateTime @default(now())
+
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+}
+
+model TaskLink {
+  id     String  @id @default(cuid())
+  taskId String
+  title  String?
+  url    String
+
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model TaskComment {
+  id      String @id @default(cuid())
+  taskId  String
+  userId  String
+  content String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+}
+
+model TaskActivity {
+  id     String           @id @default(cuid())
+  taskId String
+  userId String
+  type   TaskActivityType
+  meta   Json?
+
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 }
 
 model TaskCategory {
@@ -157,4 +221,32 @@ enum TaskStatus {
   ON_HOLD
   DONE
   CANCELED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskActivityType {
+  CREATED
+  UPDATED
+
+  STATUS_CHANGED
+
+  ASSIGNED
+  UNASSIGNED
+
+  PRIORITY_CHANGED
+  DEADLINE_CHANGED
+
+  COMMENTED
+
+  ATTACHMENT_ADDED
+  ATTACHMENT_REMOVED
+
+  LINK_ADDED
+  LINK_REMOVED
 }
