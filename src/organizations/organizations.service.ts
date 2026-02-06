@@ -17,7 +17,7 @@ export class OrganizationsService {
 
   async createOrganization(data: CreateOrganizationDto, req: Request) {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
-    const { name, slug, description, logoUrl, websiteUrl } = data;
+    const { name, slug, description, logoUrl, websiteUrl, contactEmail } = data;
 
     const existingSlug = await this.prismaService.organization.findFirst({
       where: {
@@ -42,6 +42,7 @@ export class OrganizationsService {
       data: {
         name,
         slug,
+        contactEmail: contactEmail || '',
         description: description || '',
         logoUrl: logoUrl || '',
         websiteUrl: websiteUrl || '',
@@ -79,11 +80,12 @@ export class OrganizationsService {
 
     const organizations = orgs.map((org) => {
       const owner = sanitizeUser(org.owner);
+      const user = org.members.find((member) => member.userId === req.user?.id);
       const members = org.members.map((m) => ({
         ...m,
         user: sanitizeUser(m.user),
       }));
-      return { ...org, owner, members };
+      return { ...org, owner, members, role: user?.role };
     });
 
     return {
@@ -99,6 +101,33 @@ export class OrganizationsService {
 
     const org = await this.prismaService.organization.findFirst({
       where: { id: orgId, members: { some: { userId: req.user.id } } },
+      include: {
+        owner: true,
+        members: { include: { user: true } },
+        workspaces: true,
+      },
+    });
+    if (!org) throw new NotFoundException('Organization not found.');
+
+    const organization = {
+      ...org,
+      owner: sanitizeUser(org.owner),
+      members: org.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
+    };
+
+    return {
+      success: true,
+      message: 'Organization retrieved successfully.',
+      organization,
+    };
+  }
+
+  async getOrganizationBySlug(orgSlug: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!orgSlug) throw new BadRequestException('Organization ID is required');
+
+    const org = await this.prismaService.organization.findFirst({
+      where: { slug: orgSlug, members: { some: { userId: req.user.id } } },
       include: {
         owner: true,
         members: { include: { user: true } },
@@ -153,6 +182,8 @@ export class OrganizationsService {
     if (data.description !== undefined) updates.description = data.description;
     if (data.logoUrl !== undefined) updates.logoUrl = data.logoUrl;
     if (data.websiteUrl !== undefined) updates.websiteUrl = data.websiteUrl;
+    if (data.contactEmail !== undefined)
+      updates.contactEmail = data.contactEmail;
 
     const org = await this.prismaService.organization.update({
       where: { id: orgId },

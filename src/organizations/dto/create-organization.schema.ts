@@ -18,6 +18,7 @@ const createOrganizationSchema = z.object({
     .url('Website must be a valid URL.')
     .optional()
     .or(z.literal('')),
+  contactEmail: z.email('Please enter a valid email address.'),
   description: z
     .string()
     .max(200, "Description can't exceed 200 characters.")

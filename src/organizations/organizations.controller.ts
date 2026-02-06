@@ -47,6 +47,15 @@ export class OrganizationsController {
     return this.orgrganizationService.getOrganizationById(orgId, req);
   }
 
+  @Get('/slug/:orgSlug')
+  @HttpCode(HttpStatus.OK)
+  getOrganizationBySlug(
+    @Param('orgSlug') orgSlug: string,
+    @Req() req: Request,
+  ) {
+    return this.orgrganizationService.getOrganizationBySlug(orgSlug, req);
+  }
+
   @Patch('/:orgId')
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(updateOrganizationSchema))
