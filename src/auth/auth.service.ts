@@ -268,24 +268,33 @@ export class AuthService {
   async resetPassword(data: ResetPasswordDto) {
     const { email, token, password } = data;
 
-    const user = await this.prismaService.user.findFirst({
-      where: { email, isVerified: true },
+    const user = await this.prismaService.user.findUnique({
+      where: { email },
     });
 
-    if (!user) throw new NotFoundException('User not found.');
+    if (!user || !user.isVerified)
+      throw new BadRequestException('Invalid or expired reset link.');
 
-    if (
-      !user.passwordResetToken ||
-      !user.passwordResetTokenExpiry ||
-      user.passwordResetTokenExpiry.getTime() < Date.now()
-    )
-      throw new NotFoundException('Reset link has expired.');
+    if (!user.passwordResetToken || !user.passwordResetTokenExpiry)
+      throw new BadRequestException('Invalid reset link.');
+
+    if (user.passwordResetTokenExpiry.getTime() < Date.now())
+      throw new BadRequestException('Reset link has expired.');
 
     const verify = await this.hashingService.compareHash(
       token,
       user.passwordResetToken,
     );
     if (!verify) throw new BadRequestException('Invalid reset link.');
+
+    const isSameAsOld = await this.hashingService.compareHash(
+      password,
+      user.password,
+    );
+    if (isSameAsOld)
+      throw new BadRequestException(
+        'New password must be different from your current password.',
+      );
 
     const hashedPassword = await this.hashingService.hashValue(password);
 
