@@ -46,12 +46,16 @@ export class OrganizationsController {
 
   @Get('/:orgId')
   @HttpCode(HttpStatus.OK)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN, OrgRole.MEMBER)
+  @UseGuards(OrgRoleGuard)
   getOrganization(@Param('orgId') orgId: string, @Req() req: Request) {
     return this.orgrganizationService.getOrganizationById(orgId, req);
   }
 
   @Get('/slug/:orgSlug')
   @HttpCode(HttpStatus.OK)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN, OrgRole.MEMBER)
+  @UseGuards(OrgRoleGuard)
   getOrganizationBySlug(
     @Param('orgSlug') orgSlug: string,
     @Req() req: Request,
@@ -70,6 +74,14 @@ export class OrganizationsController {
     @Req() req: Request,
   ) {
     return this.orgrganizationService.updateOrganization(orgId, data, req);
+  }
+
+  @Get('/:orgId/members')
+  @HttpCode(HttpStatus.OK)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN, OrgRole.MEMBER)
+  @UseGuards(OrgRoleGuard)
+  getMembers(@Param('orgId') orgId: string, @Req() req: Request) {
+    return this.orgrganizationService.getMembers(orgId, req);
   }
 
   @Delete('/:orgId')

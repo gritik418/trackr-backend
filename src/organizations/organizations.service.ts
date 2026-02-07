@@ -205,6 +205,28 @@ export class OrganizationsService {
     };
   }
 
+  async getMembers(orgId: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+
+    const members = await this.prismaService.organizationMember.findMany({
+      where: { organizationId: orgId },
+      include: { user: true },
+      orderBy: { joinedAt: 'asc' },
+    });
+
+    const sanitizedMembers = members.map((member) => ({
+      ...member,
+      user: sanitizeUser(member.user),
+    }));
+
+    return {
+      success: true,
+      message: 'Members retrieved successfully.',
+      members: sanitizedMembers,
+    };
+  }
+
   async deleteOrganization(orgId: string, req: Request) {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
     if (!orgId) throw new BadRequestException('Organization ID is required');
