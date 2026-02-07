@@ -21,6 +21,10 @@ import { ForgotPasswordDto } from './dto/forgot-password.schema';
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
 import { ResetPasswordDto } from './dto/reset-password.schema';
+import {
+  VERIFICATION_TOKEN_EXPIRY_MS,
+  PASSWORD_RESET_TOKEN_EXPIRY_MS,
+} from 'src/common/constants/expiration.constants';
 
 @Injectable()
 export class AuthService {
@@ -87,7 +91,9 @@ export class AuthService {
         password: hashedPassword,
         isVerified: false,
         verificationToken: hashedVerificationToken,
-        verificationTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
+        verificationTokenExpiry: new Date(
+          Date.now() + VERIFICATION_TOKEN_EXPIRY_MS,
+        ),
       },
     });
 
@@ -202,7 +208,9 @@ export class AuthService {
       },
       data: {
         verificationToken: hashedVerificationToken,
-        verificationTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
+        verificationTokenExpiry: new Date(
+          Date.now() + VERIFICATION_TOKEN_EXPIRY_MS,
+        ),
       },
     });
 
@@ -246,7 +254,9 @@ export class AuthService {
       where: { id: user.id },
       data: {
         passwordResetToken: hashedResetToken,
-        passwordResetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000),
+        passwordResetTokenExpiry: new Date(
+          Date.now() + PASSWORD_RESET_TOKEN_EXPIRY_MS,
+        ),
       },
     });
 

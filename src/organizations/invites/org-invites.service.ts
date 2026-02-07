@@ -12,6 +12,7 @@ import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
 import { ConfigService } from '@nestjs/config';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
+import { ORG_INVITE_EXPIRY_MS } from 'src/common/constants/expiration.constants';
 
 @Injectable()
 export class OrgInvitesService {
@@ -93,7 +94,7 @@ export class OrgInvitesService {
         email,
         role,
         token: hashedToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        expiresAt: new Date(Date.now() + ORG_INVITE_EXPIRY_MS),
         invitedById: userId,
         organizationId: orgId,
         status: 'PENDING',
@@ -272,7 +273,7 @@ export class OrgInvitesService {
       where: { id: inviteId },
       data: {
         token: hashedToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + ORG_INVITE_EXPIRY_MS),
         status: 'PENDING',
       },
     });
