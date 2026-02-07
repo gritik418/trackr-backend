@@ -22,6 +22,9 @@ import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validatio
 import updateOrganizationSchema, {
   UpdateOrganizationDto,
 } from './dto/update-organization.schema';
+import { OrgRoleGuard } from './guards/org-role/org-role.guard';
+import { OrgRoles } from './decorators/org-roles.decorator';
+import { OrgRole } from 'generated/prisma/enums';
 
 @UseGuards(AuthGuard)
 @Controller('organizations')
@@ -57,6 +60,8 @@ export class OrganizationsController {
   }
 
   @Patch('/:orgId')
+  @OrgRoles(OrgRole.OWNER)
+  @UseGuards(OrgRoleGuard)
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(updateOrganizationSchema))
   updateOrganization(
@@ -68,6 +73,8 @@ export class OrganizationsController {
   }
 
   @Delete('/:orgId')
+  @OrgRoles(OrgRole.OWNER)
+  @UseGuards(OrgRoleGuard)
   @HttpCode(HttpStatus.OK)
   deleteOrganization(@Param('orgId') orgId: string, @Req() req: Request) {
     return this.orgrganizationService.deleteOrganization(orgId, req);
