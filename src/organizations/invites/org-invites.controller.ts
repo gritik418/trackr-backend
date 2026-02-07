@@ -8,12 +8,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { OrgRole } from 'generated/prisma/enums';
+import { InviteStatus, OrgRole } from 'generated/prisma/enums';
 import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
 import { OrgRoles } from '../decorators/org-roles.decorator';
@@ -40,10 +41,14 @@ export class OrgInvitesController {
     return this.orgInvitesService.sendOrgInvite(orgId, data, req);
   }
 
-  @Get()
+  @Get('/')
   @HttpCode(HttpStatus.OK)
-  getInvites(@Param('orgId') orgId: string, @Req() req: Request) {
-    return this.orgInvitesService.getOrgInvites(orgId, req);
+  getInvites(
+    @Param('orgId') orgId: string,
+    @Req() req: Request,
+    @Query('status') status?: InviteStatus,
+  ) {
+    return this.orgInvitesService.getOrgInvites(orgId, req, status);
   }
 
   @Delete('/:inviteId')

@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
 import { ConfigService } from '@nestjs/config';
+import { InviteStatus } from 'generated/prisma/enums';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { ORG_INVITE_EXPIRY_MS } from 'src/common/constants/expiration.constants';
 
@@ -74,12 +75,13 @@ export class OrgInvitesService {
         where: {
           organizationId: orgId,
           email,
+          status: 'PENDING',
         },
       });
 
-    if (existingInvite && existingInvite.status === 'PENDING') {
+    if (existingInvite) {
       const now = new Date();
-      if (existingInvite.expiresAt > now) {
+      if (existingInvite.expiresAt.getTime() > now.getTime()) {
         throw new BadRequestException(
           'An invitation has already been sent to this email',
         );
@@ -121,7 +123,7 @@ export class OrgInvitesService {
     };
   }
 
-  async getOrgInvites(orgId: string, req: Request) {
+  async getOrgInvites(orgId: string, req: Request, status?: InviteStatus) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
     if (!orgId) throw new BadRequestException('Organization ID is required');
@@ -138,6 +140,7 @@ export class OrgInvitesService {
     const invites = await this.prismaService.organizationInvite.findMany({
       where: {
         organizationId: orgId,
+        status: status,
       },
       include: {
         invitedBy: true,
@@ -147,16 +150,16 @@ export class OrgInvitesService {
       },
     });
 
-    const sanitizesInvites = invites.map((invite) => ({
+    const sanitizedInvites = invites.map((invite) => ({
       ...invite,
       invitedBy: sanitizeUser(invite.invitedBy),
     }));
 
     return {
       success: true,
-      message: 'Invites fetched successfully',
-      invites: sanitizesInvites,
-      total: sanitizesInvites.length,
+      message: 'Invitations fetched successfully',
+      invitations: sanitizedInvites,
+      total: sanitizedInvites.length,
     };
   }
 
