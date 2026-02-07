@@ -76,6 +76,7 @@ export class OrganizationsService {
     const orgs = await this.prismaService.organization.findMany({
       where: { members: { some: { userId: req.user.id } } },
       include: { members: { include: { user: true } }, owner: true },
+      orderBy: { updatedAt: 'desc' },
     });
 
     const organizations = orgs.map((org) => {
@@ -131,14 +132,15 @@ export class OrganizationsService {
       include: {
         owner: true,
         members: { include: { user: true } },
-        workspaces: true,
       },
     });
     if (!org) throw new NotFoundException('Organization not found.');
 
+    const user = org.members.find((member) => member.userId === req.user?.id);
     const organization = {
       ...org,
       owner: sanitizeUser(org.owner),
+      role: user?.role,
       members: org.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
     };
 

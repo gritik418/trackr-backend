@@ -106,12 +106,15 @@ export class WorkspacesService {
         members: { include: { user: true } },
       },
     });
-
-    const sanitizedWorkspaces = workspaces.map((w) => ({
-      ...w,
-      owner: sanitizeUser(w.owner),
-      members: w.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
-    }));
+    const sanitizedWorkspaces = workspaces.map((w) => {
+      const user = w.members.find((member) => member.userId === req.user?.id);
+      return {
+        ...w,
+        role: user?.role,
+        owner: sanitizeUser(w.owner),
+        members: w.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
+      };
+    });
 
     return {
       success: true,
