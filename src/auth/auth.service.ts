@@ -145,6 +145,11 @@ export class AuthService {
       },
     });
 
+    await this.emailProducer.sendWelcomeEmail({
+      email: user.email,
+      name: user.name,
+    });
+
     return {
       success: true,
       message: 'Account verified successfully.',

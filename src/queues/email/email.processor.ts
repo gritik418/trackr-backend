@@ -13,6 +13,7 @@ import templateNames from './constants/template-names';
 import { ForgotPasswordEmailDTO } from './dto/forgot-password-email.dto';
 import { OrganizationInviteEmailDTO } from './dto/organization-invite-email.dto';
 import { SendEmailParams } from './email.interface';
+import type { WelcomeEmailDTO } from './dto/welcome-email.dto';
 
 @Processor(EMAIL_QUEUE)
 export class EmailProcessor extends WorkerHost implements OnModuleInit {
@@ -113,6 +114,18 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
           subject: `🎉 You've been invited to join ${data.organizationName} on Trackr`,
           templateName: templateNames.organizationInvite,
           text: `Hello,\n\n${data.inviterName} has invited you to join ${data.organizationName} on Trackr.\n\nAccept your invitation:\n${data.inviteLink}\n\nBest,\nTrackr Team`,
+        });
+        break;
+      }
+
+      case EMAIL_JOBS.WELCOME: {
+        const data = job.data as WelcomeEmailDTO;
+        this.sendEmail({
+          to: data.email,
+          data: data,
+          subject: `👋 Welcome to Trackr, ${data.name}!`,
+          templateName: templateNames.welcome,
+          text: `Hello ${data.name},\n\nWelcome to Trackr! We're excited to have you on board.\n\nBest,\nTrackr Team`,
         });
         break;
       }

@@ -23,18 +23,24 @@ export class OrgRoleGuard implements CanActivate {
     const req = ctx.getRequest<Request>();
     const orgId = req.params.orgId as string | null;
     const userId = req.user?.id;
+    const orgSlug = req.params.orgSlug as string | null;
 
-    if (!orgId) throw new BadRequestException('Organization ID is required.');
-    const organization = await this.prismaService.organization.findUnique({
-      where: { id: orgId },
+    if (!orgId && !orgSlug)
+      throw new BadRequestException('Organization ID is required.');
+
+    const organization = await this.prismaService.organization.findFirst({
+      where: {
+        OR: [{ id: orgId || undefined }, { slug: orgSlug || undefined }],
+      },
     });
+
     if (!organization || !userId) throw new ForbiddenException('Access denied');
 
     const membership = await this.prismaService.organizationMember.findUnique({
       where: {
         userId_organizationId: {
           userId,
-          organizationId: orgId,
+          organizationId: organization.id,
         },
       },
     });
