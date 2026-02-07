@@ -40,12 +40,20 @@ export class OrgInvitesController {
   }
 
   @Get()
+  @HttpCode(HttpStatus.OK)
   getInvites(@Param('orgId') orgId: string, @Req() req: Request) {
     return this.orgInvitesService.getOrgInvites(orgId, req);
   }
 
   @Delete('/:inviteId')
-  revokeInvite() {}
+  @HttpCode(HttpStatus.OK)
+  revokeInvite(
+    @Param('orgId') orgId: string,
+    @Param('inviteId') inviteId: string,
+    @Req() req: Request,
+  ) {
+    return this.orgInvitesService.revokeOrgInvite(orgId, inviteId, req);
+  }
 
   @Post('/:inviteId/resend')
   resendInvite() {}

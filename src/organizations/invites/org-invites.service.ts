@@ -160,4 +160,54 @@ export class OrgInvitesService {
       total: sanitizesInvites.length,
     };
   }
+
+  async revokeOrgInvite(orgId: string, inviteId: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+    if (!inviteId) throw new BadRequestException('Invite ID is required');
+
+    const organization = await this.prismaService.organization.findUnique({
+      where: { id: orgId },
+      select: { id: true },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const invite = await this.prismaService.organizationInvite.findUnique({
+      where: { id: inviteId },
+    });
+
+    if (!invite) {
+      throw new NotFoundException('Invite not found');
+    }
+
+    if (invite.organizationId !== orgId) {
+      throw new BadRequestException(
+        'Invite does not belong to this organization',
+      );
+    }
+
+    if (invite.status === 'ACCEPTED') {
+      throw new BadRequestException('Cannot revoke an accepted invite');
+    }
+
+    if (invite.status === 'REVOKED') {
+      throw new BadRequestException('Invite has already been revoked');
+    }
+
+    await this.prismaService.organizationInvite.update({
+      where: { id: inviteId },
+      data: {
+        status: 'REVOKED',
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Invite revoked successfully',
+    };
+  }
 }
