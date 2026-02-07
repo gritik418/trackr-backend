@@ -4,6 +4,7 @@ import { Queue } from 'bullmq';
 import { EMAIL_JOBS, EMAIL_QUEUE } from './email.constants';
 import { VerificationEmailDTO } from './dto/verification-email.dto';
 import { ForgotPasswordEmailDTO } from './dto/forgot-password-email.dto';
+import { OrganizationInviteEmailDTO } from './dto/organization-invite-email.dto';
 
 @Injectable()
 export class EmailProducer {
@@ -23,6 +24,15 @@ export class EmailProducer {
 
   async sendForgotPasswordEmail(data: ForgotPasswordEmailDTO) {
     await this.emailQueue.add(EMAIL_JOBS.FORGOT_PASSWORD, data, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 },
+      removeOnComplete: true,
+      removeOnFail: 50,
+    });
+  }
+
+  async sendOrganizationInviteEmail(data: OrganizationInviteEmailDTO) {
+    await this.emailQueue.add(EMAIL_JOBS.ORGANIZATION_INVITE, data, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },
       removeOnComplete: true,

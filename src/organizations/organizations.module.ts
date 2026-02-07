@@ -3,8 +3,11 @@ import { OrganizationsController } from './organizations.controller';
 import { OrganizationsService } from './organizations.service';
 import { OrgInvitesController } from './invites/org-invites.controller';
 import { OrgInvitesService } from './invites/org-invites.service';
+import { HashingModule } from 'src/common/hashing/hashing.module';
+import { EmailModule } from 'src/queues/email/email.module';
 
 @Module({
+  imports: [HashingModule, EmailModule],
   controllers: [OrganizationsController, OrgInvitesController],
   providers: [OrganizationsService, OrgInvitesService],
 })

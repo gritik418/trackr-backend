@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Req,
@@ -27,6 +29,7 @@ export class OrgInvitesController {
   constructor(private readonly orgInvitesService: OrgInvitesService) {}
 
   @Post('/')
+  @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(sendOrgInviteSchema))
   sendInvite(
     @Param('orgId') orgId: string,

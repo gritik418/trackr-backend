@@ -11,10 +11,13 @@ import { OnModuleInit } from '@nestjs/common';
 import { existsSync } from 'fs';
 import templateNames from './constants/template-names';
 import { ForgotPasswordEmailDTO } from './dto/forgot-password-email.dto';
+import { OrganizationInviteEmailDTO } from './dto/organization-invite-email.dto';
+import { SendEmailParams } from './email.interface';
 
 @Processor(EMAIL_QUEUE)
 export class EmailProcessor extends WorkerHost implements OnModuleInit {
   private transporter: nodemailer.Transporter;
+  private fromEmail: string = "'Trackr' <noreply@trackr.com>";
   private templates = new Map<string, handlebars.TemplateDelegate>();
 
   constructor(private configService: ConfigService) {
@@ -67,10 +70,7 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
           const source = await readFile(templatePath, { encoding: 'utf-8' });
           this.templates.set(templateName, handlebars.compile(source));
         } catch (error) {
-          console.warn(
-            `⚠️ Failed to load template ${templateName}:`,
-            error.message,
-          );
+          console.warn(`⚠️ Failed to load template ${templateName}`);
         }
       }
     } catch (error) {
@@ -80,46 +80,68 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
 
   async process(job: Job) {
     switch (job.name) {
-      case EMAIL_JOBS.SEND_VERIFICATION:
-        this.sendVerification(job.data);
+      case EMAIL_JOBS.SEND_VERIFICATION: {
+        const data = job.data as VerificationEmailDTO;
+        this.sendEmail({
+          to: data.email,
+          data: data,
+          subject: `✅ Verify your Trackr account`,
+          templateName: templateNames.verification,
+          text: `Hello ${data.name},\n\nPlease verify your email by clicking this link:\n${data.verificationToken}\n\nIf you didn't create an account, ignore this email.\n\nBest,\nTrackr Team`,
+        });
+
         break;
+      }
 
-      case EMAIL_JOBS.FORGOT_PASSWORD:
-        this.sendForgotPassword(job.data);
+      case EMAIL_JOBS.FORGOT_PASSWORD: {
+        const data = job.data as ForgotPasswordEmailDTO;
+        this.sendEmail({
+          to: data.email,
+          data: data,
+          subject: `🔐 Reset your Trackr password`,
+          templateName: templateNames.forgotPassword,
+          text: `Hello ${data.name},\n\nReset your password:\n${data.resetLink}\n\nThis link expires in 1 hour.\n\nBest,\nTrackr Team`,
+        });
+        break;
+      }
+
+      case EMAIL_JOBS.ORGANIZATION_INVITE: {
+        const data = job.data as OrganizationInviteEmailDTO;
+        this.sendEmail({
+          to: data.email,
+          data: data,
+          subject: `🎉 You've been invited to join ${data.organizationName} on Trackr`,
+          templateName: templateNames.organizationInvite,
+          text: `Hello,\n\n${data.inviterName} has invited you to join ${data.organizationName} on Trackr.\n\nAccept your invitation:\n${data.inviteLink}\n\nBest,\nTrackr Team`,
+        });
+        break;
+      }
+
+      default:
+        throw new Error(`Unhandled email job: ${job.name}`);
     }
   }
 
-  private async sendVerification(data: VerificationEmailDTO) {
-    const template = this.templates.get(templateNames.verification);
+  private async sendEmail<T>({
+    templateName,
+    to,
+    subject,
+    text,
+    data,
+  }: SendEmailParams<T>) {
+    const template = this.templates.get(templateName);
     if (!template) {
-      throw new Error('Verification template not loaded');
+      throw new Error(`${templateName} template not loaded`);
     }
 
     const html = template(data);
 
     await this.transporter.sendMail({
-      from: `"Trackr" <noreply@trackr.com>`,
-      to: data.email,
-      subject: `✅ Verify your Trackr account`,
+      from: this.fromEmail,
+      to,
+      subject,
       html,
-      text: `Hello ${data.name},\n\nPlease verify your email by clicking this link:\n${data.name}\n\nIf you didn't create an account, ignore this email.\n\nBest,\nTrackr Team`,
-    });
-  }
-
-  private async sendForgotPassword(data: ForgotPasswordEmailDTO) {
-    const template = this.templates.get(templateNames.forgotPassword);
-    if (!template) {
-      throw new Error('Forgot Password template not loaded');
-    }
-
-    const html = template(data);
-
-    await this.transporter.sendMail({
-      from: `"Trackr" <noreply@trackr.com>`,
-      to: data.email,
-      subject: `🔐 Reset your Trackr password`,
-      html,
-      text: `Hello ${data.name},\n\nReset your password:\n${data.resetLink}\n\nThis link expires in 1 hour.\n\nBest,\nTrackr Team`,
+      text,
     });
   }
 }

@@ -1,0 +1,226 @@
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <meta http-equiv='X-UA-Compatible' content='IE=edge' />
+    <title>You've been invited to join {{organizationName}} on Trackr</title>
+  </head>
+  <body
+    style="margin: 0; padding: 0; min-width: 100%; background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;"
+  >
+    <div
+      style='max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'
+    >
+
+      <!-- Header: Trackr Logo & Invitation -->
+      <table
+        role='presentation'
+        width='100%'
+        cellpadding='0'
+        cellspacing='0'
+        border='0'
+      >
+        <tr>
+          <td
+            style='padding: 40px 30px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;'
+          >
+            <h1
+              style='margin: 0 0 8px; font-size: 32px; font-weight: 700; color: white; letter-spacing: -0.5px;'
+            >You're Invited! 🎉</h1>
+            <p
+              style='margin: 0; font-size: 16px; color: rgba(255,255,255,0.9); font-weight: 400;'
+            >Join {{organizationName}} on Trackr</p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Main Content -->
+      <table
+        role='presentation'
+        width='100%'
+        cellpadding='0'
+        cellspacing='0'
+        border='0'
+      >
+        <tr>
+          <td style='padding: 40px 40px 20px;'>
+
+            <!-- Hero Message -->
+            <div style='text-align: center; margin-bottom: 32px;'>
+              <h2
+                style='margin: 0 0 12px; font-size: 24px; font-weight: 600; color: #1a1a1a; line-height: 1.3;'
+              >{{inviterName}} invited you to collaborate</h2>
+              <p
+                style='margin: 0; font-size: 16px; color: #6b7280; line-height: 1.6; max-width: 500px;'
+              >
+                You've been invited to join
+                <strong>{{organizationName}}</strong>
+                on Trackr. Start collaborating on tasks and projects with your
+                team.
+              </p>
+            </div>
+
+            <!-- Organization Info Card -->
+            <div
+              style='background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%); border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid #e5e7eb;'
+            >
+              <table
+                role='presentation'
+                width='100%'
+                cellpadding='0'
+                cellspacing='0'
+                border='0'
+              >
+                <tr>
+                  <td style='text-align: center;'>
+                    <div
+                      style='display: inline-block; width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 28px; line-height: 64px; font-weight: bold; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(102,126,234,0.3);'
+                    >{{organizationInitial}}</div>
+                    <h3
+                      style='margin: 0 0 8px; font-size: 20px; font-weight: 600; color: #1a1a1a;'
+                    >{{organizationName}}</h3>
+                    <p
+                      style='margin: 0; font-size: 14px; color: #6b7280;'
+                    >Invited by {{inviterName}}</p>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- Primary CTA Button -->
+            <table
+              role='presentation'
+              cellpadding='0'
+              cellspacing='0'
+              border='0'
+              style='margin: 0 auto;'
+            >
+              <tr>
+                <td
+                  align='center'
+                  style='background: #667eea; border-radius: 12px; padding: 0; box-shadow: 0 4px 12px rgba(102,126,234,0.3);'
+                >
+                  <a
+                    href='{{inviteLink}}'
+                    style='display: inline-block; padding: 18px 48px; font-size: 18px; font-weight: 600; color: white; text-decoration: none; border-radius: 12px; background: #667eea; transition: all 0.2s; min-width: 240px; line-height: 1.4;'
+                  >
+                    Accept Invitation
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Fallback Link -->
+            <div style='margin-top: 24px; text-align: center;'>
+              <p style='margin: 0 0 4px; font-size: 14px; color: #9ca3af;'>
+                Or copy and paste this link:
+              </p>
+              <p
+                style="margin: 0; font-size: 13px; color: #6b7280; word-break: break-all; font-family: 'Courier New', monospace; direction: ltr;"
+              >
+                {{inviteLink}}
+              </p>
+            </div>
+
+          </td>
+        </tr>
+      </table>
+
+      <!-- Benefits Section -->
+      <table
+        role='presentation'
+        width='100%'
+        cellpadding='0'
+        cellspacing='0'
+        border='0'
+        style='background-color: #f8fafc;'
+      >
+        <tr>
+          <td style='padding: 32px 40px;'>
+            <h3
+              style='margin: 0 0 20px; font-size: 20px; font-weight: 600; color: #1a1a1a; text-align: center;'
+            >What you can do together:</h3>
+            <table
+              role='presentation'
+              width='100%'
+              cellpadding='0'
+              cellspacing='0'
+              border='0'
+            >
+              <tr>
+                <td
+                  style='padding: 12px 0; width: 33%; text-align: center; vertical-align: top;'
+                >
+                  <span
+                    style='display: inline-block; width: 48px; height: 48px; border-radius: 12px; background: #667eea; color: white; font-size: 20px; line-height: 48px; font-weight: bold; margin-bottom: 8px;'
+                  >📊</span>
+                  <p
+                    style='margin: 0; font-size: 14px; color: #6b7280; font-weight: 500;'
+                  >Track Projects</p>
+                </td>
+                <td
+                  style='padding: 12px 0; width: 33%; text-align: center; vertical-align: top;'
+                >
+                  <span
+                    style='display: inline-block; width: 48px; height: 48px; border-radius: 12px; background: #f59e0b; color: white; font-size: 20px; line-height: 48px; font-weight: bold; margin-bottom: 8px;'
+                  >🤝</span>
+                  <p
+                    style='margin: 0; font-size: 14px; color: #6b7280; font-weight: 500;'
+                  >Collaborate</p>
+                </td>
+                <td
+                  style='padding: 12px 0; width: 33%; text-align: center; vertical-align: top;'
+                >
+                  <span
+                    style='display: inline-block; width: 48px; height: 48px; border-radius: 12px; background: #10b981; color: white; font-size: 20px; line-height: 48px; font-weight: bold; margin-bottom: 8px;'
+                  >🚀</span>
+                  <p
+                    style='margin: 0; font-size: 14px; color: #6b7280; font-weight: 500;'
+                  >Ship Faster</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Footer -->
+      <table
+        role='presentation'
+        width='100%'
+        cellpadding='0'
+        cellspacing='0'
+        border='0'
+      >
+        <tr>
+          <td
+            style='padding: 32px 40px; background-color: #1f2937; border-radius: 0 0 12px 12px;'
+          >
+            <div style='text-align: center;'>
+              <p
+                style='margin: 0 0 16px; font-size: 14px; color: #d1d5db; line-height: 1.5;'
+              >
+                This invitation was sent to you by
+                {{inviterEmail}}. If you don't want to join this organization,
+                you can safely ignore this email.
+              </p>
+              <p style='margin: 0 0 8px; font-size: 12px; color: #9ca3af;'>
+                © 2026 Trackr. All rights reserved.<br />
+                <a
+                  href='https://trackr.com/privacy'
+                  style='color: #9ca3af; text-decoration: underline;'
+                >Privacy</a>
+                |
+                <a
+                  href='https://trackr.com/terms'
+                  style='color: #9ca3af; text-decoration: underline;'
+                >Terms</a>
+              </p>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+  </body>
+</html>
