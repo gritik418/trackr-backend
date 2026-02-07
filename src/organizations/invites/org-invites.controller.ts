@@ -40,7 +40,9 @@ export class OrgInvitesController {
   }
 
   @Get()
-  getInvites() {}
+  getInvites(@Param('orgId') orgId: string, @Req() req: Request) {
+    return this.orgInvitesService.getOrgInvites(orgId, req);
+  }
 
   @Delete('/:inviteId')
   revokeInvite() {}

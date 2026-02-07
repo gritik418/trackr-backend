@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
 import { ConfigService } from '@nestjs/config';
+import { sanitizeUser } from 'src/common/utils/sanitize-user';
 
 @Injectable()
 export class OrgInvitesService {
@@ -118,6 +119,45 @@ export class OrgInvitesService {
     return {
       success: true,
       message: 'Invitation sent successfully',
+    };
+  }
+
+  async getOrgInvites(orgId: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+
+    const organization = await this.prismaService.organization.findUnique({
+      where: { id: orgId },
+      select: { id: true },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const invites = await this.prismaService.organizationInvite.findMany({
+      where: {
+        organizationId: orgId,
+      },
+      include: {
+        invitedBy: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    const sanitizesInvites = invites.map((invite) => ({
+      ...invite,
+      invitedBy: sanitizeUser(invite.invitedBy),
+    }));
+
+    return {
+      success: true,
+      message: 'Invites fetched successfully',
+      invites: sanitizesInvites,
+      total: sanitizesInvites.length,
     };
   }
 }
