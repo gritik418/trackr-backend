@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -55,6 +56,13 @@ export class OrgInvitesController {
     return this.orgInvitesService.revokeOrgInvite(orgId, inviteId, req);
   }
 
-  @Post('/:inviteId/resend')
-  resendInvite() {}
+  @Patch('/:inviteId/resend')
+  @HttpCode(HttpStatus.OK)
+  resendInvite(
+    @Param('orgId') orgId: string,
+    @Param('inviteId') inviteId: string,
+    @Req() req: Request,
+  ) {
+    return this.orgInvitesService.resendOrgInvite(orgId, inviteId, req);
+  }
 }

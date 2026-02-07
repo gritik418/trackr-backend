@@ -86,7 +86,6 @@ model OrganizationInvite {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invitedBy    User         @relation(fields: [invitedById], references: [id])
 
-  @@unique([organizationId, email])
 }
 
 enum InviteStatus {

@@ -69,12 +69,10 @@ export class OrgInvitesService {
     }
 
     const existingInvite =
-      await this.prismaService.organizationInvite.findUnique({
+      await this.prismaService.organizationInvite.findFirst({
         where: {
-          organizationId_email: {
-            organizationId: orgId,
-            email: email,
-          },
+          organizationId: orgId,
+          email,
         },
       });
 
@@ -208,6 +206,94 @@ export class OrgInvitesService {
     return {
       success: true,
       message: 'Invite revoked successfully',
+    };
+  }
+
+  async resendOrgInvite(orgId: string, inviteId: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+    if (!inviteId) throw new BadRequestException('Invite ID is required');
+
+    const organization = await this.prismaService.organization.findUnique({
+      where: { id: orgId },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const invite = await this.prismaService.organizationInvite.findUnique({
+      where: { id: inviteId },
+    });
+
+    if (!invite) {
+      throw new NotFoundException('Invite not found');
+    }
+
+    if (invite.organizationId !== orgId) {
+      throw new BadRequestException(
+        'Invite does not belong to this organization',
+      );
+    }
+
+    if (invite.status === 'ACCEPTED') {
+      throw new BadRequestException(
+        'Cannot resend an accepted invite. User is already a member.',
+      );
+    }
+
+    if (invite.status === 'REVOKED') {
+      throw new BadRequestException(
+        'Cannot resend a revoked invite. Please create a new invitation.',
+      );
+    }
+
+    const inviter = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: {
+        name: true,
+        email: true,
+      },
+    });
+
+    if (!inviter) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const token = uuidv4();
+    const hashedToken = await this.hashingService.hashValue(token, 8);
+
+    await this.prismaService.organizationInvite.update({
+      where: { id: inviteId },
+      data: {
+        token: hashedToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        status: 'PENDING',
+      },
+    });
+
+    const clientUrl = this.configService.get<string>('CLIENT_URL');
+    const inviteLink = `${clientUrl}/org/${orgId}/invite/accept?token=${token}`;
+
+    const organizationInitial = organization.name.charAt(0).toUpperCase();
+
+    await this.emailProducer.sendOrganizationInviteEmail({
+      email: invite.email,
+      organizationName: organization.name,
+      organizationInitial,
+      inviterName: inviter.name,
+      inviterEmail: inviter.email,
+      inviteLink,
+    });
+
+    return {
+      success: true,
+      message: 'Invitation resent successfully',
     };
   }
 }
