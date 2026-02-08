@@ -29,7 +29,7 @@ export class TasksService {
       status,
       priority,
       deadline,
-      assignedToId,
+      assigneeIds,
       categoryId,
       links,
     } = data;
@@ -99,37 +99,35 @@ export class TasksService {
       }
     }
 
-    if (assignedToId && assignedToId !== userId) {
+    if (assigneeIds && assigneeIds.length > 0) {
       if (project.nature === ProjectNature.PUBLIC) {
-        const assignedWorkspaceMember =
-          await this.prismaService.workspaceMember.findUnique({
+        const assignedWorkspaceMembers =
+          await this.prismaService.workspaceMember.findMany({
             where: {
-              userId_workspaceId: {
-                userId: assignedToId,
-                workspaceId,
-              },
+              userId: { in: assigneeIds },
+              workspaceId,
             },
+            select: { userId: true },
           });
 
-        if (!assignedWorkspaceMember) {
+        if (assignedWorkspaceMembers.length !== assigneeIds.length) {
           throw new BadRequestException(
-            'Assigned user is not a member of this workspace',
+            'One or more assigned users are not members of this workspace',
           );
         }
       } else {
-        const assignedProjectMember =
-          await this.prismaService.projectMember.findUnique({
+        const assignedProjectMembers =
+          await this.prismaService.projectMember.findMany({
             where: {
-              projectId_userId: {
-                projectId,
-                userId: assignedToId,
-              },
+              projectId,
+              userId: { in: assigneeIds },
             },
+            select: { userId: true },
           });
 
-        if (!assignedProjectMember) {
+        if (assignedProjectMembers.length !== assigneeIds.length) {
           throw new BadRequestException(
-            'Assigned user is not a member of this project',
+            'One or more assigned users are not members of this project',
           );
         }
       }
@@ -144,15 +142,17 @@ export class TasksService {
         deadline,
         workspaceId,
         projectId,
-        assignedToId,
         categoryId,
         createdById: userId,
+        assignees: {
+          connect: assigneeIds?.map((id) => ({ id })) || [],
+        },
         links: {
           create: links,
         },
       },
       include: {
-        assignedTo: {
+        assignees: {
           select: {
             id: true,
             name: true,
@@ -225,10 +225,16 @@ export class TasksService {
         projectId,
         status,
         priority,
-        assignedToId,
+        assignees: assignedToId
+          ? {
+              some: {
+                id: assignedToId,
+              },
+            }
+          : undefined,
       },
       include: {
-        assignedTo: {
+        assignees: {
           select: {
             id: true,
             name: true,
@@ -260,15 +266,7 @@ export class TasksService {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const {
-      title,
-      description,
-      status,
-      priority,
-      deadline,
-      assignedToId,
-      categoryId,
-    } = data;
+    const { title, description, status, priority, deadline, categoryId } = data;
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
@@ -330,42 +328,6 @@ export class TasksService {
       }
     }
 
-    if (assignedToId) {
-      if (project.nature === ProjectNature.PUBLIC) {
-        const assignedWorkspaceMember =
-          await this.prismaService.workspaceMember.findUnique({
-            where: {
-              userId_workspaceId: {
-                userId: assignedToId,
-                workspaceId,
-              },
-            },
-          });
-
-        if (!assignedWorkspaceMember) {
-          throw new BadRequestException(
-            'Assigned user is not a member of this workspace',
-          );
-        }
-      } else {
-        const assignedProjectMember =
-          await this.prismaService.projectMember.findUnique({
-            where: {
-              projectId_userId: {
-                projectId,
-                userId: assignedToId,
-              },
-            },
-          });
-
-        if (!assignedProjectMember) {
-          throw new BadRequestException(
-            'Assigned user is not a member of this project',
-          );
-        }
-      }
-    }
-
     const updatedTask = await this.prismaService.task.update({
       where: { id: taskId },
       data: {
@@ -374,11 +336,10 @@ export class TasksService {
         status,
         priority,
         deadline,
-        assignedToId,
         categoryId,
       },
       include: {
-        assignedTo: {
+        assignees: {
           select: {
             id: true,
             name: true,

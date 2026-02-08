@@ -37,7 +37,7 @@ model User {
   taskComments    TaskComment[]
   taskAttachments TaskAttachment[]
 
-  assignedTasks       Task[]               @relation("AssignedTasks")
+  assignedTasks       Task[]               @relation("TaskAssignees")
   createdTasks        Task[]               @relation("CreatedTasks")
 }
 
@@ -197,7 +197,6 @@ model Task {
 
   workspaceId  String  
   projectId    String
-  assignedToId String?
   categoryId   String?
   createdById  String
   createdAt    DateTime @default(now())
@@ -209,7 +208,7 @@ model Task {
 
   workspace  Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project    Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignedTo User?         @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  assignees  User[]        @relation("TaskAssignees")
   createdBy  User          @relation("CreatedTasks", fields: [createdById], references: [id])
   category   TaskCategory? @relation(fields: [categoryId], references: [id])
 }

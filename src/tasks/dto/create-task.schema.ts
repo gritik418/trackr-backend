@@ -12,7 +12,7 @@ const createTaskSchema = z.object({
   priority: z.enum(TaskPriority).default(TaskPriority.MEDIUM),
   deadline: z.coerce.date().optional().nullable(),
 
-  assignedToId: z.cuid('Invalid User ID').optional().nullable(),
+  assigneeIds: z.array(z.cuid('Invalid User ID')).optional(),
   categoryId: z.cuid('Invalid Category ID').optional().nullable(),
 
   links: z

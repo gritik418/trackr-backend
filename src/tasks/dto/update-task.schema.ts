@@ -13,7 +13,6 @@ export const updateTaskSchema = z.object({
   priority: z.enum(TaskPriority).optional(),
   deadline: z.coerce.date().optional().nullable(),
 
-  assignedToId: z.cuid('Invalid User ID').optional().nullable(),
   categoryId: z.cuid('Invalid Category ID').optional().nullable(),
 });
 
