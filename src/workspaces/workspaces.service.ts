@@ -103,7 +103,7 @@ export class WorkspacesService {
       },
       include: {
         owner: true,
-        members: { include: { user: true } },
+        members: true,
       },
     });
     const sanitizedWorkspaces = workspaces.map((w) => {
@@ -112,7 +112,6 @@ export class WorkspacesService {
         ...w,
         role: user?.role,
         owner: sanitizeUser(w.owner),
-        members: w.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
       };
     });
 
@@ -137,7 +136,7 @@ export class WorkspacesService {
       },
       include: {
         owner: true,
-        members: { include: { user: true } },
+        members: true,
       },
     });
 
@@ -145,10 +144,6 @@ export class WorkspacesService {
 
     const sanitizedWorkspace = {
       ...workspace,
-      members: workspace.members.map((m) => ({
-        ...m,
-        user: sanitizeUser(m.user),
-      })),
       owner: sanitizeUser(workspace.owner),
     };
 
@@ -170,7 +165,7 @@ export class WorkspacesService {
       },
       include: {
         owner: true,
-        members: { include: { user: true } },
+        members: true,
         organization: true,
       },
     });
@@ -179,10 +174,6 @@ export class WorkspacesService {
 
     const sanitizedWorkspace = {
       ...workspace,
-      members: workspace.members.map((m) => ({
-        ...m,
-        user: sanitizeUser(m.user),
-      })),
       owner: sanitizeUser(workspace.owner),
     };
 
@@ -193,16 +184,15 @@ export class WorkspacesService {
     };
   }
 
-  async getWorkspaceMembers(orgId: string, workspaceId: string, req: Request) {
+  async getWorkspaceMembers(workspaceId: string, req: Request) {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
-    if (!orgId) throw new BadRequestException('Organization ID is required.');
     if (!workspaceId)
       throw new BadRequestException('Workspace ID is required.');
 
     const workspace = await this.prismaService.workspace.findUnique({
       where: {
         id: workspaceId,
-        organizationId: orgId,
+        members: { some: { userId: req.user.id } },
       },
       include: {
         members: {

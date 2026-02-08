@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -19,16 +20,18 @@ import {
 import { ProjectsService } from './projects.service';
 import { ProjectRoleGuard } from './guards/project-role.guard';
 import { ProjectRoles } from './decorators/project-roles.decorator';
-import { ProjectRole } from 'generated/prisma/enums';
+import { ProjectRole, WorkspaceRole } from 'generated/prisma/enums';
+import { WorkspaceRoleGuard } from 'src/workspaces/guards/workspace-role.guard';
+import { WorkspaceRoles } from 'src/workspaces/decorators/workspace-roles.decorator';
 
-@UseGuards(AuthGuard, ProjectRoleGuard)
-@ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
+@UseGuards(AuthGuard, WorkspaceRoleGuard)
 @Controller('workspaces/:workspaceId/projects')
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post('/')
   @HttpCode(HttpStatus.CREATED)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   @UsePipes(new ZodValidationPipe(createProjectSchema))
   createProject(
     @Param('workspaceId') workspaceId: string,
@@ -36,5 +39,16 @@ export class ProjectsController {
     @Req() req: Request,
   ) {
     return this.projectsService.createProject(workspaceId, data, req);
+  }
+
+  @Get('/')
+  @HttpCode(HttpStatus.OK)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  getProjects(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
+    return this.projectsService.getProjects(workspaceId, req);
   }
 }

@@ -84,4 +84,44 @@ export class ProjectsService {
       };
     });
   }
+
+  async getProjects(workspaceId: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const workspace = await this.prismaService.workspace.findUnique({
+      where: {
+        id: workspaceId,
+      },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found in this organization');
+    }
+
+    const member = await this.prismaService.workspaceMember.findUnique({
+      where: {
+        userId_workspaceId: {
+          userId,
+          workspaceId,
+        },
+      },
+    });
+
+    if (!member) {
+      throw new UnauthorizedException('You are not a member of this workspace');
+    }
+
+    const projects = await this.prismaService.project.findMany({
+      where: {
+        workspaceId,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Projects fetched successfully',
+      projects,
+    };
+  }
 }
