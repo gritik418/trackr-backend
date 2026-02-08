@@ -129,4 +129,38 @@ export class ProjectsService {
       projects,
     };
   }
+
+  async getProjectById(projectId: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const project = await this.prismaService.project.findUnique({
+      where: {
+        id: projectId,
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const member = await this.prismaService.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId,
+        },
+      },
+    });
+
+    if (!member) {
+      throw new UnauthorizedException('You are not a member of this project');
+    }
+
+    return {
+      success: true,
+      message: 'Project fetched successfully',
+      project,
+    };
+  }
 }

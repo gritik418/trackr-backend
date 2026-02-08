@@ -151,6 +151,7 @@ model Project {
   name        String
   description String?
   status      ProjectStatus @default(ACTIVE)
+  nature      ProjectNature @default(PRIVATE)
 
   workspaceId String
   ownerId     String
@@ -179,6 +180,11 @@ model ProjectMember {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
+}
+
+enum ProjectNature {
+  PRIVATE
+  PUBLIC
 }
 
 model Task {

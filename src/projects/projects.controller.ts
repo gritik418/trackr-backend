@@ -51,4 +51,16 @@ export class ProjectsController {
   getProjects(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
     return this.projectsService.getProjects(workspaceId, req);
   }
+
+  @Get('/:projectId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
+  getProjectById(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Req() req: Request,
+  ) {
+    return this.projectsService.getProjectById(projectId, req);
+  }
 }
