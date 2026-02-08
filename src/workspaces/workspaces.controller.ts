@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -105,11 +106,21 @@ export class WorkspacesController {
   @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   @UsePipes(new ZodValidationPipe(updateWorkspaceSchema))
   updateWorkspace(
-    @Param('orgId') orgId: string,
     @Param('workspaceId') workspaceId: string,
     @Body() data: UpdateWorkspaceDto,
     @Req() req: Request,
   ) {
     return this.workspaceService.updateWorkspace(workspaceId, data, req);
+  }
+
+  @Delete('workspaces/:workspaceId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  deleteWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.deleteWorkspace(workspaceId, req);
   }
 }

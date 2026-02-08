@@ -112,7 +112,6 @@ model Workspace {
   members        WorkspaceMember[]
   projects       Project[]
   tasks          Task[]
-  taskCategories TaskCategory[]
 }
 
 model WorkspaceMember {
@@ -145,6 +144,7 @@ model Project {
 
   members ProjectMember[]
   tasks   Task[]
+  taskCategories TaskCategory[]
 
   @@unique([workspaceId, name])
 }
@@ -171,7 +171,7 @@ model Task {
   deadline    DateTime?
 
   workspaceId  String  
-  projectId    String?
+  projectId    String
   assignedToId String?
   categoryId   String?
   createdById  String
@@ -183,7 +183,7 @@ model Task {
   comments    TaskComment[]
 
   workspace  Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project    Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  project    Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignedTo User?         @relation("AssignedTasks", fields: [assignedToId], references: [id])
   createdBy  User          @relation("CreatedTasks", fields: [createdById], references: [id])
   category   TaskCategory? @relation(fields: [categoryId], references: [id])
@@ -231,16 +231,16 @@ model TaskComment {
 
 model TaskCategory {
   id          String   @id @default(cuid())
-  workspaceId String
+  projectId   String
   name        String
   color       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks     Task[]
 
-  @@unique([workspaceId, name])
+  @@unique([projectId, name])
 }
 
 enum UserRole {

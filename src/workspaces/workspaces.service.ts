@@ -290,4 +290,36 @@ export class WorkspacesService {
       },
     };
   }
+
+  async deleteWorkspace(workspaceId: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+
+    const workspace = await this.prismaService.workspace.findUnique({
+      where: { id: workspaceId, members: { some: { userId: req.user.id } } },
+      include: {
+        members: {
+          where: { userId: req.user.id },
+          select: { role: true },
+        },
+      },
+    });
+
+    if (!workspace) throw new NotFoundException('Workspace not found.');
+
+    const userRole = workspace.members[0]?.role;
+    if (userRole !== 'OWNER' && userRole !== 'ADMIN') {
+      throw new UnauthorizedException(
+        'Only the workspace owner/admin can delete the workspace.',
+      );
+    }
+
+    await this.prismaService.workspace.delete({
+      where: { id: workspaceId },
+    });
+
+    return {
+      success: true,
+      message: 'Workspace deleted successfully.',
+    };
+  }
 }
