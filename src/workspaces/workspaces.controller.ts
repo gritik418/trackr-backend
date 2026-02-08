@@ -17,6 +17,9 @@ import createWorkspaceSchema, {
 import { Request } from 'express';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
 import { AuthGuard } from 'src/common/guards/auth/auth.guard';
+import { WorkspaceRoleGuard } from './guards/workspace-role.guard';
+import { WorkspaceRole } from 'generated/prisma/enums';
+import { WorkspaceRoles } from './decorators/workspace-roles.decorator';
 
 @UseGuards(AuthGuard)
 @Controller('organizations/:orgId/workspaces')
@@ -24,6 +27,8 @@ export class WorkspacesController {
   constructor(private readonly workspaceService: WorkspacesService) {}
 
   @Post('/')
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(createWorkspaceSchema))
   createWorkspace(
@@ -36,12 +41,24 @@ export class WorkspacesController {
 
   @Get('/')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
   getWorkspaces(@Param('orgId') orgId: string, @Req() req: Request) {
     return this.workspaceService.getWorkspaces(orgId, req);
   }
 
   @Get('/:workspaceId')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
   getWorkspace(
     @Param('orgId') orgId: string,
     @Param('workspaceId') workspaceId: string,
