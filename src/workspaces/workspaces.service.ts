@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.schema';
+import { UpdateWorkspaceDto } from './dto/update-workspace.schema';
 import { Request } from 'express';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 
@@ -214,6 +215,79 @@ export class WorkspacesService {
       success: true,
       message: 'Workspace members retrieved successfully.',
       members: sanitizedMembers,
+    };
+  }
+
+  async updateWorkspace(
+    workspaceId: string,
+    data: UpdateWorkspaceDto,
+    req: Request,
+  ) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+
+    const workspace = await this.prismaService.workspace.findUnique({
+      where: { id: workspaceId },
+      include: {
+        members: {
+          where: { userId: req.user.id },
+          select: { role: true },
+        },
+      },
+    });
+
+    if (!workspace) throw new NotFoundException('Workspace not found.');
+
+    const userRole = workspace.members[0]?.role;
+    if (!userRole || !['OWNER', 'ADMIN'].includes(userRole)) {
+      throw new UnauthorizedException(
+        'Only workspace owner/admin can update workspace.',
+      );
+    }
+
+    const { name, slug, description, iconUrl } = data;
+
+    if (slug && slug !== workspace.slug) {
+      const existingSlug = await this.prismaService.workspace.findFirst({
+        where: { slug },
+      });
+      if (existingSlug)
+        throw new BadRequestException('Slug is already in use.');
+    }
+
+    if (name && name !== workspace.name) {
+      const existingName = await this.prismaService.workspace.findFirst({
+        where: {
+          name,
+          organizationId: workspace.organizationId,
+        },
+      });
+      if (existingName)
+        throw new BadRequestException(
+          'You have used the same name for another workspace.',
+        );
+    }
+
+    const updatedWorkspace = await this.prismaService.workspace.update({
+      where: { id: workspaceId },
+      data: {
+        name,
+        slug,
+        description,
+        iconUrl,
+      },
+      include: {
+        owner: true,
+        members: true,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Workspace updated successfully.',
+      workspace: {
+        ...updatedWorkspace,
+        owner: sanitizeUser(updatedWorkspace.owner),
+      },
     };
   }
 }

@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -14,6 +15,9 @@ import { WorkspacesService } from './workspaces.service';
 import createWorkspaceSchema, {
   CreateWorkspaceDto,
 } from './dto/create-workspace.schema';
+import updateWorkspaceSchema, {
+  UpdateWorkspaceDto,
+} from './dto/update-workspace.schema';
 import { Request } from 'express';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
 import { AuthGuard } from 'src/common/guards/auth/auth.guard';
@@ -93,5 +97,19 @@ export class WorkspacesController {
     @Req() req: Request,
   ) {
     return this.workspaceService.getWorkspaceMembers(workspaceId, req);
+  }
+
+  @Patch('workspaces/:workspaceId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @UsePipes(new ZodValidationPipe(updateWorkspaceSchema))
+  updateWorkspace(
+    @Param('orgId') orgId: string,
+    @Param('workspaceId') workspaceId: string,
+    @Body() data: UpdateWorkspaceDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.updateWorkspace(workspaceId, data, req);
   }
 }
