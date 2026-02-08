@@ -155,7 +155,40 @@ export class WorkspacesService {
     return {
       success: true,
       message: 'Workspace retrieved successfully.',
-      workspaces: sanitizedWorkspace,
+      workspace: sanitizedWorkspace,
+    };
+  }
+
+  async getWorkspaceBySlug(slug: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!slug) throw new BadRequestException('Workspace slug is required.');
+
+    const workspace = await this.prismaService.workspace.findUnique({
+      where: {
+        slug,
+        members: { some: { userId: req.user.id } },
+      },
+      include: {
+        owner: true,
+        members: { include: { user: true } },
+      },
+    });
+
+    if (!workspace) throw new NotFoundException('Workspace not found.');
+
+    const sanitizedWorkspace = {
+      ...workspace,
+      members: workspace.members.map((m) => ({
+        ...m,
+        user: sanitizeUser(m.user),
+      })),
+      owner: sanitizeUser(workspace.owner),
+    };
+
+    return {
+      success: true,
+      message: 'Workspace retrieved successfully.',
+      workspace: sanitizedWorkspace,
     };
   }
 }

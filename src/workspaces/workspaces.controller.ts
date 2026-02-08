@@ -18,17 +18,19 @@ import { Request } from 'express';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
 import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { WorkspaceRoleGuard } from './guards/workspace-role.guard';
-import { WorkspaceRole } from 'generated/prisma/enums';
+import { OrgRole, WorkspaceRole } from 'generated/prisma/enums';
 import { WorkspaceRoles } from './decorators/workspace-roles.decorator';
+import { OrgRoleGuard } from 'src/organizations/guards/org-role/org-role.guard';
+import { OrgRoles } from 'src/organizations/decorators/org-roles.decorator';
 
 @UseGuards(AuthGuard)
-@Controller('organizations/:orgId/workspaces')
+@Controller()
 export class WorkspacesController {
   constructor(private readonly workspaceService: WorkspacesService) {}
 
-  @Post('/')
-  @UseGuards(WorkspaceRoleGuard)
-  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @Post('organizations/:orgId/workspaces')
+  @UseGuards(OrgRoleGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(createWorkspaceSchema))
   createWorkspace(
@@ -39,7 +41,15 @@ export class WorkspacesController {
     return this.workspaceService.createWorkspace(orgId, data, req);
   }
 
-  @Get('/')
+  @Get('organizations/:orgId/workspaces')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(OrgRoleGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN, OrgRole.MEMBER)
+  getWorkspaces(@Param('orgId') orgId: string, @Req() req: Request) {
+    return this.workspaceService.getWorkspaces(orgId, req);
+  }
+
+  @Get('workspaces/slug/:workspaceSlug')
   @HttpCode(HttpStatus.OK)
   @UseGuards(WorkspaceRoleGuard)
   @WorkspaceRoles(
@@ -47,11 +57,14 @@ export class WorkspacesController {
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
   )
-  getWorkspaces(@Param('orgId') orgId: string, @Req() req: Request) {
-    return this.workspaceService.getWorkspaces(orgId, req);
+  getWorkspaceBySlug(
+    @Param('workspaceSlug') slug: string,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.getWorkspaceBySlug(slug, req);
   }
 
-  @Get('/:workspaceId')
+  @Get('organizations/:orgId/workspaces/:workspaceId')
   @HttpCode(HttpStatus.OK)
   @UseGuards(WorkspaceRoleGuard)
   @WorkspaceRoles(

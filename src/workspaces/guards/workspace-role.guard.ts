@@ -23,6 +23,8 @@ export class WorkspaceRoleGuard implements CanActivate {
     const req = ctx.getRequest<Request>();
     const workspaceId = req.params.workspaceId as string | null;
     const workspaceSlug = req.params.workspaceSlug as string | null;
+    const orgId = req.params.orgId as string | null;
+    const orgSlug = req.params.orgSlug as string | null;
     const userId = req.user?.id;
 
     if (!workspaceId && !workspaceSlug) {
@@ -39,12 +41,21 @@ export class WorkspaceRoleGuard implements CanActivate {
           { id: workspaceId || undefined },
           { slug: workspaceSlug || undefined },
         ],
+        organization:
+          orgId || orgSlug
+            ? {
+                OR: [
+                  { id: orgId || undefined },
+                  { slug: orgSlug || undefined },
+                ],
+              }
+            : undefined,
       },
       select: { id: true },
     });
 
     if (!workspace) {
-      throw new ForbiddenException('Workspace not found');
+      throw new ForbiddenException('Workspace not found or access denied');
     }
 
     const membership = await this.prismaService.workspaceMember.findUnique({
