@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -8,6 +9,7 @@ import { Request } from 'express';
 import { ProjectRole } from 'generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.schema';
+import { UpdateProjectDto } from './dto/update-project.schema';
 
 @Injectable()
 export class ProjectsService {
@@ -44,7 +46,7 @@ export class ProjectsService {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    const { name, description } = data;
+    const { name, description, nature } = data;
 
     const existingProject = await this.prismaService.project.findUnique({
       where: {
@@ -64,6 +66,7 @@ export class ProjectsService {
         data: {
           name,
           description,
+          nature,
           workspaceId,
           ownerId: userId,
         },
@@ -161,6 +164,62 @@ export class ProjectsService {
       success: true,
       message: 'Project fetched successfully',
       project,
+    };
+  }
+
+  async updateProject(projectId: string, data: UpdateProjectDto, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+      include: {
+        members: {
+          where: { userId },
+          select: { role: true },
+        },
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const userRole = project.members[0]?.role;
+    if (!userRole || !['OWNER', 'ADMIN'].includes(userRole)) {
+      throw new ForbiddenException(
+        'Only project owner/admin can update project.',
+      );
+    }
+
+    const { name, description, nature } = data;
+
+    if (name && name !== project.name) {
+      const existingProject = await this.prismaService.project.findFirst({
+        where: {
+          workspaceId: project.workspaceId,
+          name,
+          NOT: { id: projectId },
+        },
+      });
+      if (existingProject) {
+        throw new BadRequestException('Project with this name already exists');
+      }
+    }
+
+    const updatedProject = await this.prismaService.project.update({
+      where: { id: projectId },
+      data: {
+        name,
+        description,
+        nature,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Project updated successfully',
+      project: updatedProject,
     };
   }
 }

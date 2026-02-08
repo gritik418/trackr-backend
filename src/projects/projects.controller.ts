@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -17,6 +18,10 @@ import {
   CreateProjectDto,
   createProjectSchema,
 } from './dto/create-project.schema';
+import {
+  UpdateProjectDto,
+  updateProjectSchema,
+} from './dto/update-project.schema';
 import { ProjectsService } from './projects.service';
 import { ProjectRoleGuard } from './guards/project-role.guard';
 import { ProjectRoles } from './decorators/project-roles.decorator';
@@ -62,5 +67,18 @@ export class ProjectsController {
     @Req() req: Request,
   ) {
     return this.projectsService.getProjectById(projectId, req);
+  }
+
+  @Patch('/:projectId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
+  @UsePipes(new ZodValidationPipe(updateProjectSchema))
+  updateProject(
+    @Param('projectId') projectId: string,
+    @Body() data: UpdateProjectDto,
+    @Req() req: Request,
+  ) {
+    return this.projectsService.updateProject(projectId, data, req);
   }
 }
