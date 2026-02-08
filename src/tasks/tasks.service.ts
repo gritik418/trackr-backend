@@ -179,7 +179,7 @@ export class TasksService {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const { status, priority, assignedToId } = query;
+    const { status, priority, assignedToId, tag } = query;
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
@@ -228,6 +228,7 @@ export class TasksService {
         projectId,
         status,
         priority,
+        tag,
         assignees: assignedToId
           ? {
               some: {
@@ -497,7 +498,7 @@ export class TasksService {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const { status, priority } = query;
+    const { status, priority, tag } = query;
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
@@ -546,6 +547,7 @@ export class TasksService {
         projectId,
         status,
         priority,
+        tag,
         assignees: {
           some: {
             id: userId,

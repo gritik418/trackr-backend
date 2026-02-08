@@ -473,13 +473,14 @@ export class WorkspacesService {
     if (!workspaceId)
       throw new BadRequestException('Workspace ID is required.');
 
-    const { status, priority } = query;
+    const { status, priority, tag } = query;
 
     const tasks = await this.prismaService.task.findMany({
       where: {
         workspaceId,
         status,
         priority,
+        tag,
         assignees: { some: { id: req.user.id } },
       },
       include: {
