@@ -59,8 +59,11 @@ export class ProjectsController {
 
   @Get('/:projectId')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
   getProjectById(
     @Param('workspaceId') workspaceId: string,
     @Param('projectId') projectId: string,

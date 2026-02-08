@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { ProjectRole } from 'generated/prisma/enums';
+import { ProjectNature, ProjectRole } from 'generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.schema';
 import { UpdateProjectDto } from './dto/update-project.schema';
@@ -118,11 +118,18 @@ export class ProjectsService {
     const projects = await this.prismaService.project.findMany({
       where: {
         workspaceId,
-        members: {
-          some: {
-            userId,
+        OR: [
+          {
+            members: {
+              some: {
+                userId,
+              },
+            },
           },
-        },
+          {
+            nature: ProjectNature.PUBLIC,
+          },
+        ],
       },
     });
 
@@ -156,7 +163,7 @@ export class ProjectsService {
       },
     });
 
-    if (!member) {
+    if (!member && project.nature !== ProjectNature.PUBLIC) {
       throw new UnauthorizedException('You are not a member of this project');
     }
 
@@ -192,7 +199,7 @@ export class ProjectsService {
       );
     }
 
-    const { name, description, nature } = data;
+    const { name, description, nature, status } = data;
 
     if (name && name !== project.name) {
       const existingProject = await this.prismaService.project.findFirst({
@@ -213,6 +220,7 @@ export class ProjectsService {
         name,
         description,
         nature,
+        status,
       },
     });
 
