@@ -7,6 +7,7 @@ import {
 import { Request } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.schema';
+import { GetTasksDto } from './dto/get-tasks.schema';
 import {
   ProjectNature,
   ProjectRole,
@@ -167,6 +168,85 @@ export class TasksService {
       success: true,
       message: 'Task created successfully',
       task,
+    };
+  }
+
+  async getTasks(projectId: string, query: GetTasksDto, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const { status, priority, assignedToId } = query;
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const workspaceId = project.workspaceId;
+
+    const workspaceMember = await this.prismaService.workspaceMember.findUnique(
+      {
+        where: {
+          userId_workspaceId: {
+            userId,
+            workspaceId,
+          },
+        },
+      },
+    );
+
+    if (!workspaceMember) {
+      throw new UnauthorizedException('You are not a member of this workspace');
+    }
+
+    if (project.nature === ProjectNature.PRIVATE) {
+      const projectMember = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+
+      if (!projectMember) {
+        throw new UnauthorizedException(
+          'You are not authorized to view tasks in this project',
+        );
+      }
+    }
+
+    const tasks = await this.prismaService.task.findMany({
+      where: {
+        projectId,
+        status,
+        priority,
+        assignedToId,
+      },
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+        category: true,
+        links: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Tasks fetched successfully',
+      tasks,
     };
   }
 }
