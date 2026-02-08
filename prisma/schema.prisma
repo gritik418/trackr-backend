@@ -194,6 +194,7 @@ model Task {
   status      TaskStatus   @default(TODO)
   priority    TaskPriority @default(MEDIUM)
   deadline    DateTime?
+  tag         String?
 
   workspaceId  String  
   projectId    String

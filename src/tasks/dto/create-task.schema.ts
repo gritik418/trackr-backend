@@ -11,6 +11,7 @@ const createTaskSchema = z.object({
   status: z.enum(TaskStatus).default(TaskStatus.TODO),
   priority: z.enum(TaskPriority).default(TaskPriority.MEDIUM),
   deadline: z.coerce.date().optional().nullable(),
+  tag: z.string().optional().nullable(),
 
   assigneeIds: z.array(z.cuid('Invalid User ID')).optional(),
   categoryId: z.cuid('Invalid Category ID').optional().nullable(),

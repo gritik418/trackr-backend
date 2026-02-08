@@ -30,6 +30,7 @@ export class TasksService {
       status,
       priority,
       deadline,
+      tag,
       assigneeIds,
       categoryId,
       links,
@@ -144,6 +145,7 @@ export class TasksService {
         workspaceId,
         projectId,
         categoryId,
+        tag,
         createdById: userId,
         assignees: {
           connect: assigneeIds?.map((id) => ({ id })) || [],
@@ -267,7 +269,8 @@ export class TasksService {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const { title, description, status, priority, deadline, categoryId } = data;
+    const { title, description, status, priority, deadline, categoryId, tag } =
+      data;
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
@@ -338,6 +341,7 @@ export class TasksService {
         priority,
         deadline,
         categoryId,
+        tag,
       },
       include: {
         assignees: {

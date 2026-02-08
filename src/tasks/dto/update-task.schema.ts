@@ -12,6 +12,7 @@ export const updateTaskSchema = z.object({
   status: z.enum(TaskStatus).optional(),
   priority: z.enum(TaskPriority).optional(),
   deadline: z.coerce.date().optional().nullable(),
+  tag: z.string().optional().nullable(),
 
   categoryId: z.cuid('Invalid Category ID').optional().nullable(),
 });
