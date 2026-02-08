@@ -79,4 +79,20 @@ export class WorkspacesController {
   ) {
     return this.workspaceService.getWorkspaceById(orgId, workspaceId, req);
   }
+
+  @Get('organizations/:orgId/workspaces/:workspaceId/members')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  getWorkspaceMembers(
+    @Param('orgId') orgId: string,
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.getWorkspaceMembers(orgId, workspaceId, req);
+  }
 }
