@@ -413,7 +413,6 @@ export class TasksService {
         );
       }
 
-      // Check if assignee is a workspace member
       const assigneeMember =
         await this.prismaService.workspaceMember.findUnique({
           where: {
@@ -445,7 +444,6 @@ export class TasksService {
         );
       }
 
-      // Check if assignee is a project member
       const assigneeProjectMember =
         await this.prismaService.projectMember.findUnique({
           where: {
