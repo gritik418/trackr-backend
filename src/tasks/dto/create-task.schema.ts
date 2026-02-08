@@ -1,16 +1,5 @@
 import { z } from 'zod';
-
-const taskStatusEnum = z.enum([
-  'TODO',
-  'IN_PROGRESS',
-  'IN_REVIEW',
-  'BLOCKED',
-  'ON_HOLD',
-  'DONE',
-  'CANCELED',
-]);
-
-const taskPriorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
+import { TaskStatus, TaskPriority } from 'generated/prisma/enums';
 
 const createTaskSchema = z.object({
   title: z
@@ -18,14 +7,14 @@ const createTaskSchema = z.object({
     .min(1, 'Title is required.')
     .max(150, "Title can't exceed 150 characters."),
 
-  description: z.string().optional(),
-  status: taskStatusEnum.optional(),
-  priority: taskPriorityEnum.optional(),
-  deadline: z.iso.datetime().optional(),
+  description: z.string().optional().nullable(),
+  status: z.enum(TaskStatus).default(TaskStatus.TODO),
+  priority: z.enum(TaskPriority).default(TaskPriority.MEDIUM),
+  deadline: z.coerce.date().optional().nullable(),
+  projectId: z.cuid('Invalid Project ID'),
 
-  assignedToId: z.cuid().optional(),
-
-  categoryId: z.cuid().optional(),
+  assignedToId: z.cuid('Invalid User ID').optional().nullable(),
+  categoryId: z.cuid('Invalid Category ID').optional().nullable(),
 
   links: z
     .array(
