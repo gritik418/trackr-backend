@@ -10,6 +10,7 @@ import { UpdateWorkspaceDto } from './dto/update-workspace.schema';
 import { AddMemberDto } from './dto/add-member.schema';
 import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 import { Request } from 'express';
+import { GetTasksDto } from 'src/tasks/dto/get-tasks.schema';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 
 @Injectable()
@@ -464,6 +465,41 @@ export class WorkspacesService {
     return {
       success: true,
       message: 'Member removed from workspace successfully.',
+    };
+  }
+
+  async getMyTasks(workspaceId: string, query: GetTasksDto, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!workspaceId)
+      throw new BadRequestException('Workspace ID is required.');
+
+    const { status, priority } = query;
+
+    const tasks = await this.prismaService.task.findMany({
+      where: {
+        workspaceId,
+        status,
+        priority,
+        assignees: { some: { id: req.user.id } },
+      },
+      include: {
+        project: true,
+        assignees: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      success: true,
+      message: 'My tasks retrieved successfully.',
+      tasks,
     };
   }
 }

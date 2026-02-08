@@ -8,10 +8,12 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
+import { GetTasksDto } from 'src/tasks/dto/get-tasks.schema';
 import { WorkspacesService } from './workspaces.service';
 import createWorkspaceSchema, {
   CreateWorkspaceDto,
@@ -174,5 +176,21 @@ export class WorkspacesController {
       memberId,
       req,
     );
+  }
+
+  @Get('workspaces/:workspaceId/my-tasks')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  getMyTasks(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: GetTasksDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.getMyTasks(workspaceId, query, req);
   }
 }

@@ -62,7 +62,7 @@ export class TasksController {
   @UsePipes(new ZodValidationPipe(getTasksSchema))
   getMyTasks(
     @Param('projectId') projectId: string,
-    @Query() query: GetTasksDto,
+    @Query() query: Omit<GetTasksDto, 'assignedToId'>,
     @Req() req: Request,
   ) {
     return this.tasksService.getMyTasks(projectId, query, req);
