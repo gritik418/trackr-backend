@@ -4,10 +4,11 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { ProjectRole } from 'generated/prisma/enums';
+import { ProjectNature, ProjectRole } from 'generated/prisma/enums';
 import { PROJECT_ROLES_KEY } from '../decorators/project-roles.decorator';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -32,6 +33,14 @@ export class ProjectRoleGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
     const membership = await this.prismaService.projectMember.findUnique({
       where: {
         projectId_userId: {
@@ -41,7 +50,8 @@ export class ProjectRoleGuard implements CanActivate {
       },
     });
 
-    if (!membership) {
+    // If private project, user MUST be a project member
+    if (!membership && project.nature === ProjectNature.PRIVATE) {
       throw new ForbiddenException('You are not a member of this project');
     }
 
@@ -54,10 +64,34 @@ export class ProjectRoleGuard implements CanActivate {
       return true;
     }
 
-    if (!requiredRoles.includes(membership.role)) {
-      throw new ForbiddenException(
-        'You do not have permission to perform this action',
-      );
+    if (project.nature === ProjectNature.PUBLIC) {
+      const workspaceMember =
+        await this.prismaService.workspaceMember.findUnique({
+          where: {
+            userId_workspaceId: {
+              userId,
+              workspaceId: project.workspaceId,
+            },
+          },
+        });
+
+      if (!workspaceMember) {
+        throw new ForbiddenException('You are not a member of this workspace');
+      }
+
+      if (
+        !requiredRoles.includes(workspaceMember.role as unknown as ProjectRole)
+      ) {
+        throw new ForbiddenException(
+          'You do not have permission to perform this action',
+        );
+      }
+    } else {
+      if (membership && !requiredRoles.includes(membership.role)) {
+        throw new ForbiddenException(
+          'You do not have permission to perform this action',
+        );
+      }
     }
 
     return true;

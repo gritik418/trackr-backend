@@ -13,11 +13,11 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { WorkspaceRole } from 'generated/prisma/enums';
+import { ProjectRole } from 'generated/prisma/enums';
 import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
-import { WorkspaceRoles } from 'src/workspaces/decorators/workspace-roles.decorator';
-import { WorkspaceRoleGuard } from 'src/workspaces/guards/workspace-role.guard';
+import { ProjectRoles } from 'src/projects/decorators/project-roles.decorator';
+import { ProjectRoleGuard } from 'src/projects/guards/project-role.guard';
 import createTaskSchema, { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto, getTasksSchema } from './dto/get-tasks.schema';
 import { UpdateTaskDto, updateTaskSchema } from './dto/update-task.schema';
@@ -30,8 +30,8 @@ export class TasksController {
 
   @Post('/')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(WorkspaceRoleGuard)
-  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
   @UsePipes(new ZodValidationPipe(createTaskSchema))
   createTask(
     @Param('projectId') projectId: string,
@@ -43,12 +43,8 @@ export class TasksController {
 
   @Get('/')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(WorkspaceRoleGuard)
-  @WorkspaceRoles(
-    WorkspaceRole.OWNER,
-    WorkspaceRole.ADMIN,
-    WorkspaceRole.MEMBER,
-  )
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
   @UsePipes(new ZodValidationPipe(getTasksSchema))
   getTasks(
     @Param('projectId') projectId: string,
@@ -60,12 +56,8 @@ export class TasksController {
 
   @Patch('/:taskId')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(WorkspaceRoleGuard)
-  @WorkspaceRoles(
-    WorkspaceRole.OWNER,
-    WorkspaceRole.ADMIN,
-    WorkspaceRole.MEMBER,
-  )
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
   @UsePipes(new ZodValidationPipe(updateTaskSchema))
   updateTask(
     @Param('projectId') projectId: string,
