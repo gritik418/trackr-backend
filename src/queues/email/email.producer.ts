@@ -5,6 +5,7 @@ import { EMAIL_JOBS, EMAIL_QUEUE } from './email.constants';
 import { VerificationEmailDTO } from './dto/verification-email.dto';
 import { ForgotPasswordEmailDTO } from './dto/forgot-password-email.dto';
 import { OrganizationInviteEmailDTO } from './dto/organization-invite-email.dto';
+import { WorkspaceInviteEmailDTO } from './dto/workspace-invite-email.dto';
 import { WelcomeEmailDTO } from './dto/welcome-email.dto';
 
 @Injectable()
@@ -43,6 +44,15 @@ export class EmailProducer {
 
   async sendOrganizationInviteEmail(data: OrganizationInviteEmailDTO) {
     await this.emailQueue.add(EMAIL_JOBS.ORGANIZATION_INVITE, data, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 },
+      removeOnComplete: true,
+      removeOnFail: 50,
+    });
+  }
+
+  async sendWorkspaceInviteEmail(data: WorkspaceInviteEmailDTO) {
+    await this.emailQueue.add(EMAIL_JOBS.WORKSPACE_INVITE, data, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },
       removeOnComplete: true,

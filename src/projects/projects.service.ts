@@ -115,6 +115,11 @@ export class ProjectsService {
     const projects = await this.prismaService.project.findMany({
       where: {
         workspaceId,
+        members: {
+          some: {
+            userId,
+          },
+        },
       },
     });
 

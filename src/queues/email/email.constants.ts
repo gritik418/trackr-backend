@@ -6,6 +6,7 @@ export const EMAIL_JOBS = {
   RESET_PASSWORD: 'reset-password',
 
   ORGANIZATION_INVITE: 'organization-invite',
+  WORKSPACE_INVITE: 'workspace-invite',
 
   WELCOME: 'welcome',
 };

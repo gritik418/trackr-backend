@@ -12,6 +12,7 @@ import { existsSync } from 'fs';
 import templateNames from './constants/template-names';
 import { ForgotPasswordEmailDTO } from './dto/forgot-password-email.dto';
 import { OrganizationInviteEmailDTO } from './dto/organization-invite-email.dto';
+import { WorkspaceInviteEmailDTO } from './dto/workspace-invite-email.dto';
 import { SendEmailParams } from './email.interface';
 import type { WelcomeEmailDTO } from './dto/welcome-email.dto';
 
@@ -114,6 +115,18 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
           subject: `🎉 You've been invited to join ${data.organizationName} on Trackr`,
           templateName: templateNames.organizationInvite,
           text: `Hello,\n\n${data.inviterName} has invited you to join ${data.organizationName} on Trackr.\n\nAccept your invitation:\n${data.inviteLink}\n\nBest,\nTrackr Team`,
+        });
+        break;
+      }
+
+      case EMAIL_JOBS.WORKSPACE_INVITE: {
+        const data = job.data as WorkspaceInviteEmailDTO;
+        this.sendEmail({
+          to: data.email,
+          data: data,
+          subject: `🎉 You've been invited to join ${data.workspaceName} on Trackr`,
+          templateName: templateNames.workspaceInvite,
+          text: `Hello,\n\n${data.inviterName} has invited you to join ${data.workspaceName} on Trackr.\n\nAccept your invitation:\n${data.inviteLink}\n\nBest,\nTrackr Team`,
         });
         break;
       }

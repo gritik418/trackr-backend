@@ -12,3 +12,8 @@ export const PASSWORD_RESET_TOKEN_EXPIRY_MS =
 export const ORG_INVITE_EXPIRY_DAYS = 7;
 export const ORG_INVITE_EXPIRY_MS =
   ORG_INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+
+// Workspace invite expiration
+export const WORKSPACE_INVITE_EXPIRY_DAYS = 7;
+export const WORKSPACE_INVITE_EXPIRY_MS =
+  WORKSPACE_INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;

@@ -31,13 +31,14 @@ model User {
   projectMembers    ProjectMember[]
   organizationMembers OrganizationMember[]
   workspaceMembers    WorkspaceMember[]
+  organizationInvites OrganizationInvite[]
+  workspaceInvites    WorkspaceInvite[]
 
   taskComments    TaskComment[]
   taskAttachments TaskAttachment[]
 
   assignedTasks       Task[]               @relation("AssignedTasks")
   createdTasks        Task[]               @relation("CreatedTasks")
-  organizationInvites OrganizationInvite[]
 }
 
 model Organization {
@@ -86,7 +87,6 @@ model OrganizationInvite {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invitedBy    User         @relation(fields: [invitedById], references: [id])
-
 }
 
 enum InviteStatus {
@@ -112,6 +112,7 @@ model Workspace {
   members        WorkspaceMember[]
   projects       Project[]
   tasks          Task[]
+  invites        WorkspaceInvite[]
 }
 
 model WorkspaceMember {
@@ -126,6 +127,24 @@ model WorkspaceMember {
 
   @@unique([userId, workspaceId])
 }
+
+model WorkspaceInvite {
+  id             String       @id @default(cuid())
+  workspaceId String
+  email          String
+  role           WorkspaceRole      @default(MEMBER)
+  token          String       @unique
+  invitedById    String
+  status         InviteStatus @default(PENDING)
+
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  acceptedAt DateTime?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation(fields: [invitedById], references: [id])
+}
+
 
 model Project {
   id          String        @id @default(cuid())

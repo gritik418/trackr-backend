@@ -19,6 +19,10 @@ import createWorkspaceSchema, {
 import updateWorkspaceSchema, {
   UpdateWorkspaceDto,
 } from './dto/update-workspace.schema';
+import addMemberSchema, { AddMemberDto } from './dto/add-member.schema';
+import updateMemberRoleSchema, {
+  UpdateMemberRoleDto,
+} from './dto/update-member-role.schema';
 import { Request } from 'express';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
 import { AuthGuard } from 'src/common/guards/auth/auth.guard';
@@ -122,5 +126,53 @@ export class WorkspacesController {
     @Req() req: Request,
   ) {
     return this.workspaceService.deleteWorkspace(workspaceId, req);
+  }
+
+  @Post('workspaces/:workspaceId/members')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @UsePipes(new ZodValidationPipe(addMemberSchema))
+  addMember(
+    @Param('workspaceId') workspaceId: string,
+    @Body() data: AddMemberDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.addWorkspaceMember(workspaceId, data, req);
+  }
+
+  @Patch('workspaces/:workspaceId/members/:memberId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @UsePipes(new ZodValidationPipe(updateMemberRoleSchema))
+  updateMemberRole(
+    @Param('workspaceId') workspaceId: string,
+    @Param('memberId') memberId: string,
+    @Body() data: UpdateMemberRoleDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.updateWorkspaceMemberRole(
+      workspaceId,
+      memberId,
+      data,
+      req,
+    );
+  }
+
+  @Delete('workspaces/:workspaceId/members/:memberId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  removeMember(
+    @Param('workspaceId') workspaceId: string,
+    @Param('memberId') memberId: string,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.removeWorkspaceMember(
+      workspaceId,
+      memberId,
+      req,
+    );
   }
 }

@@ -7,6 +7,8 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.schema';
 import { UpdateWorkspaceDto } from './dto/update-workspace.schema';
+import { AddMemberDto } from './dto/add-member.schema';
+import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 import { Request } from 'express';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 
@@ -168,6 +170,7 @@ export class WorkspacesService {
         owner: true,
         members: true,
         organization: true,
+        projects: true,
       },
     });
 
@@ -320,6 +323,147 @@ export class WorkspacesService {
     return {
       success: true,
       message: 'Workspace deleted successfully.',
+    };
+  }
+
+  async addWorkspaceMember(
+    workspaceId: string,
+    data: AddMemberDto,
+    req: Request,
+  ) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    const { email, role } = data;
+
+    const workspace = await this.prismaService.workspace.findUnique({
+      where: { id: workspaceId },
+      include: { organization: true },
+    });
+
+    if (!workspace) throw new NotFoundException('Workspace not found.');
+
+    const user = await this.prismaService.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) throw new NotFoundException('User not found.');
+
+    const orgMember = await this.prismaService.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: user.id,
+          organizationId: workspace.organizationId,
+        },
+      },
+    });
+
+    if (!orgMember) {
+      throw new BadRequestException(
+        'User must be a member of the organization first.',
+      );
+    }
+
+    const existingWorkspaceMember =
+      await this.prismaService.workspaceMember.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: user.id,
+            workspaceId,
+          },
+        },
+      });
+
+    if (existingWorkspaceMember) {
+      throw new BadRequestException(
+        'User is already a member of this workspace.',
+      );
+    }
+
+    await this.prismaService.workspaceMember.create({
+      data: {
+        userId: user.id,
+        workspaceId,
+        role,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Member added to workspace successfully.',
+    };
+  }
+
+  async updateWorkspaceMemberRole(
+    workspaceId: string,
+    memberId: string,
+    data: UpdateMemberRoleDto,
+    req: Request,
+  ) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    const { role } = data;
+
+    const member = await this.prismaService.workspaceMember.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!member || member.workspaceId !== workspaceId) {
+      throw new NotFoundException('Workspace member not found.');
+    }
+
+    if (member.role === 'OWNER' && role !== 'OWNER') {
+      const ownersCount = await this.prismaService.workspaceMember.count({
+        where: { workspaceId, role: 'OWNER' },
+      });
+      if (ownersCount <= 1) {
+        throw new BadRequestException(
+          'Workspace must have at least one owner.',
+        );
+      }
+    }
+
+    await this.prismaService.workspaceMember.update({
+      where: { id: memberId },
+      data: { role },
+    });
+
+    return {
+      success: true,
+      message: 'Member role updated successfully.',
+    };
+  }
+
+  async removeWorkspaceMember(
+    workspaceId: string,
+    memberId: string,
+    req: Request,
+  ) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+
+    const member = await this.prismaService.workspaceMember.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!member || member.workspaceId !== workspaceId) {
+      throw new NotFoundException('Workspace member not found.');
+    }
+
+    if (member.role === 'OWNER') {
+      const ownersCount = await this.prismaService.workspaceMember.count({
+        where: { workspaceId, role: 'OWNER' },
+      });
+      if (ownersCount <= 1) {
+        throw new BadRequestException(
+          'Workspace must have at least one owner.',
+        );
+      }
+    }
+
+    await this.prismaService.workspaceMember.delete({
+      where: { id: memberId },
+    });
+
+    return {
+      success: true,
+      message: 'Member removed from workspace successfully.',
     };
   }
 }
