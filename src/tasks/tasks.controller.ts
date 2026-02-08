@@ -55,6 +55,19 @@ export class TasksController {
     return this.tasksService.getTasks(projectId, query, req);
   }
 
+  @Get('/me')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
+  @UsePipes(new ZodValidationPipe(getTasksSchema))
+  getMyTasks(
+    @Param('projectId') projectId: string,
+    @Query() query: GetTasksDto,
+    @Req() req: Request,
+  ) {
+    return this.tasksService.getMyTasks(projectId, query, req);
+  }
+
   @Patch('/:taskId')
   @HttpCode(HttpStatus.OK)
   @UseGuards(ProjectRoleGuard)

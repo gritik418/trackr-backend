@@ -488,4 +488,87 @@ export class TasksService {
       task: updatedTask,
     };
   }
+
+  async getMyTasks(projectId: string, query: GetTasksDto, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const { status, priority } = query;
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const workspaceId = project.workspaceId;
+
+    const workspaceMember = await this.prismaService.workspaceMember.findUnique(
+      {
+        where: {
+          userId_workspaceId: {
+            userId,
+            workspaceId,
+          },
+        },
+      },
+    );
+
+    if (!workspaceMember) {
+      throw new UnauthorizedException('You are not a member of this workspace');
+    }
+
+    if (project.nature === ProjectNature.PRIVATE) {
+      const projectMember = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+
+      if (!projectMember) {
+        throw new UnauthorizedException(
+          'You are not authorized to view tasks in this project',
+        );
+      }
+    }
+
+    const tasks = await this.prismaService.task.findMany({
+      where: {
+        projectId,
+        status,
+        priority,
+        assignees: {
+          some: {
+            id: userId,
+          },
+        },
+      },
+      include: {
+        assignees: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+        category: true,
+        links: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Tasks fetched successfully',
+      tasks,
+    };
+  }
 }
