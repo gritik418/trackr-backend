@@ -27,11 +27,12 @@ model User {
 
   organizations       Organization[]
   workspaces          Workspace[]
+  projects          Project[]
+  projectMembers    ProjectMember[]
   organizationMembers OrganizationMember[]
   workspaceMembers    WorkspaceMember[]
 
   taskComments    TaskComment[]
-  taskActivities  TaskActivity[]
   taskAttachments TaskAttachment[]
 
   assignedTasks       Task[]               @relation("AssignedTasks")
@@ -109,6 +110,7 @@ model Workspace {
   owner          User              @relation(fields: [ownerId], references: [id])
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members        WorkspaceMember[]
+  projects       Project[]
   tasks          Task[]
   taskCategories TaskCategory[]
 }
@@ -126,6 +128,40 @@ model WorkspaceMember {
   @@unique([userId, workspaceId])
 }
 
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+
+  workspaceId String
+  ownerId     String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner     User      @relation(fields: [ownerId], references: [id])
+
+  members ProjectMember[]
+  tasks   Task[]
+
+  @@unique([workspaceId, name])
+}
+
+model ProjectMember {
+  id        String        @id @default(cuid())
+  projectId String
+  userId    String
+  role      ProjectRole  @default(MEMBER)
+  joinedAt  DateTime     @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
 model Task {
   id          String       @id @default(cuid())
   title       String
@@ -134,7 +170,8 @@ model Task {
   priority    TaskPriority @default(MEDIUM)
   deadline    DateTime?
 
-  workspaceId  String
+  workspaceId  String  
+  projectId    String?
   assignedToId String?
   categoryId   String?
   createdById  String
@@ -144,13 +181,14 @@ model Task {
   attachments TaskAttachment[]
   links       TaskLink[]
   comments    TaskComment[]
-  activities  TaskActivity[]
 
   workspace  Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project    Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
   assignedTo User?         @relation("AssignedTasks", fields: [assignedToId], references: [id])
   createdBy  User          @relation("CreatedTasks", fields: [createdById], references: [id])
   category   TaskCategory? @relation(fields: [categoryId], references: [id])
 }
+
 
 model TaskAttachment {
   id           String  @id @default(cuid())
@@ -186,19 +224,6 @@ model TaskComment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
-}
-
-model TaskActivity {
-  id     String           @id @default(cuid())
-  taskId String
-  userId String
-  type   TaskActivityType
-  meta   Json?
-
-  createdAt DateTime @default(now())
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id])
@@ -241,6 +266,22 @@ enum WorkspaceRole {
   MEMBER
 }
 
+enum ProjectStatus {
+  DRAFT        
+  ACTIVE       
+  ON_HOLD      
+  BLOCKED      
+  COMPLETED    
+  ARCHIVED     
+  CANCELED     
+}
+
+enum ProjectRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
 enum TaskStatus {
   TODO
   IN_PROGRESS
@@ -256,25 +297,4 @@ enum TaskPriority {
   MEDIUM
   HIGH
   URGENT
-}
-
-enum TaskActivityType {
-  CREATED
-  UPDATED
-
-  STATUS_CHANGED
-
-  ASSIGNED
-  UNASSIGNED
-
-  PRIORITY_CHANGED
-  DEADLINE_CHANGED
-
-  COMMENTED
-
-  ATTACHMENT_ADDED
-  ATTACHMENT_REMOVED
-
-  LINK_ADDED
-  LINK_REMOVED
 }
