@@ -7,12 +7,17 @@ import {
 import { Request } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.schema';
+import {
+  ProjectNature,
+  ProjectRole,
+  WorkspaceRole,
+} from 'generated/prisma/enums';
 
 @Injectable()
 export class TasksService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async createTask(workspaceId: string, data: CreateTaskDto, req: Request) {
+  async createTask(projectId: string, data: CreateTaskDto, req: Request) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
@@ -22,11 +27,20 @@ export class TasksService {
       status,
       priority,
       deadline,
-      projectId,
       assignedToId,
       categoryId,
       links,
     } = data;
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const workspaceId = project.workspaceId;
 
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
       {
@@ -43,48 +57,79 @@ export class TasksService {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    const project = await this.prismaService.project.findUnique({
-      where: { id: projectId },
-    });
-
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
-
-    if (project.workspaceId !== workspaceId) {
-      throw new BadRequestException(
-        'Project does not belong to this workspace',
-      );
-    }
-
-    const projectMember = await this.prismaService.projectMember.findUnique({
-      where: {
-        projectId_userId: {
-          projectId,
-          userId,
-        },
-      },
-    });
-
-    if (!projectMember) {
-      throw new UnauthorizedException('You are not a member of this project');
-    }
-
-    if (assignedToId) {
-      const assignedUserMember =
-        await this.prismaService.projectMember.findUnique({
-          where: {
-            projectId_userId: {
-              projectId,
-              userId: assignedToId,
-            },
+    if (project.nature === ProjectNature.PRIVATE) {
+      const projectMember = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
           },
-        });
+        },
+      });
 
-      if (!assignedUserMember) {
-        throw new BadRequestException(
-          'Assigned user is not a member of this project',
+      if (!projectMember) {
+        throw new UnauthorizedException(
+          'You are not authorized to create tasks in this project',
         );
+      }
+    }
+
+    if (project.nature === ProjectNature.PUBLIC) {
+      if (workspaceMember.role === WorkspaceRole.MEMBER) {
+        throw new UnauthorizedException(
+          'Only workspace admins and owners can create tasks in public projects',
+        );
+      }
+    } else {
+      const projectMember = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+
+      if (!projectMember || projectMember.role === ProjectRole.MEMBER) {
+        throw new UnauthorizedException(
+          'You are not authorized to create tasks in this project',
+        );
+      }
+    }
+
+    if (assignedToId && assignedToId !== userId) {
+      if (project.nature === ProjectNature.PUBLIC) {
+        const assignedWorkspaceMember =
+          await this.prismaService.workspaceMember.findUnique({
+            where: {
+              userId_workspaceId: {
+                userId: assignedToId,
+                workspaceId,
+              },
+            },
+          });
+
+        if (!assignedWorkspaceMember) {
+          throw new BadRequestException(
+            'Assigned user is not a member of this workspace',
+          );
+        }
+      } else {
+        const assignedProjectMember =
+          await this.prismaService.projectMember.findUnique({
+            where: {
+              projectId_userId: {
+                projectId,
+                userId: assignedToId,
+              },
+            },
+          });
+
+        if (!assignedProjectMember) {
+          throw new BadRequestException(
+            'Assigned user is not a member of this project',
+          );
+        }
       }
     }
 
