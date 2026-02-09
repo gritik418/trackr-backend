@@ -84,4 +84,19 @@ export class ProjectsController {
   ) {
     return this.projectsService.updateProject(projectId, data, req);
   }
+
+  @Get('/:projectId/members')
+  @HttpCode(HttpStatus.OK)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  getProjectMembers(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Req() req: Request,
+  ) {
+    return this.projectsService.getProjectMembers(projectId, req);
+  }
 }
