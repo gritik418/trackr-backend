@@ -13,7 +13,7 @@ const createTaskSchema = z.object({
   deadline: z.coerce.date().optional().nullable(),
   tag: z.string().optional().nullable(),
 
-  assigneeIds: z.array(z.cuid('Invalid User ID')).optional(),
+  assignedToIds: z.array(z.cuid('Invalid User ID')).optional(),
   categoryId: z.cuid('Invalid Category ID').optional().nullable(),
 
   links: z

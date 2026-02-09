@@ -15,6 +15,7 @@ export const updateTaskSchema = z.object({
   tag: z.string().optional().nullable(),
 
   categoryId: z.cuid('Invalid Category ID').optional().nullable(),
+  assignedToIds: z.array(z.cuid('Invalid User ID')).optional(),
 });
 
 export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;

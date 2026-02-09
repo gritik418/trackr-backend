@@ -438,6 +438,7 @@ export class WorkspaceInvitesService {
           select: {
             name: true,
             iconUrl: true,
+            slug: true,
             description: true,
             owner: {
               select: {
