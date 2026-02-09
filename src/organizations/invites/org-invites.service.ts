@@ -384,6 +384,59 @@ export class OrgInvitesService {
     });
   }
 
+  async rejectOrgInvite(orgId: string, data: AcceptOrgInviteDto, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const { token } = data;
+
+    const invites = await this.prismaService.organizationInvite.findMany({
+      where: {
+        organizationId: orgId,
+        email: user.email,
+        status: InviteStatus.PENDING,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    let validInvite: OrganizationInvite | null = null;
+    for (const invite of invites) {
+      const isMatch = await this.hashingService.compareHash(
+        token,
+        invite.token,
+      );
+      if (isMatch) {
+        validInvite = invite;
+        break;
+      }
+    }
+
+    if (!validInvite) {
+      throw new BadRequestException('Invalid or expired invitation token');
+    }
+
+    await this.prismaService.organizationInvite.update({
+      where: { id: validInvite.id },
+      data: {
+        status: InviteStatus.REVOKED, // Using REVOKED to mean declined by user for now
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Invitation declined successfully',
+    };
+  }
+
   async previewOrgInvite(orgId: string, token: string, req: Request) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
@@ -403,6 +456,16 @@ export class OrgInvitesService {
         id: true,
         name: true,
         slug: true,
+        logoUrl: true,
+        websiteUrl: true,
+        description: true,
+        owner: {
+          select: {
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
       },
     });
 
@@ -447,6 +510,7 @@ export class OrgInvitesService {
       success: true,
       message: 'Invite details fetched successfully',
       invite: validInvite,
+      organization,
     };
   }
 }

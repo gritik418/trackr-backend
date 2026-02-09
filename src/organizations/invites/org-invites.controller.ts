@@ -93,6 +93,17 @@ export class OrgInvitesController {
     return this.orgInvitesService.acceptOrgInvite(orgId, data, req);
   }
 
+  @Post('/reject')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(acceptOrgInviteSchema))
+  rejectInvite(
+    @Param('orgId') orgId: string,
+    @Body() data: AcceptOrgInviteDto,
+    @Req() req: Request,
+  ) {
+    return this.orgInvitesService.rejectOrgInvite(orgId, data, req);
+  }
+
   @Get('/preview')
   @HttpCode(HttpStatus.OK)
   previewInvite(
