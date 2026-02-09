@@ -7,6 +7,7 @@ import {
 import { Request } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SendWorkspaceInviteDto } from './dto/send-workspace-invite.schema';
+import { AcceptWorkspaceInviteDto } from './dto/accept-workspace-invite.schema';
 import { v4 as uuidv4 } from 'uuid';
 import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
@@ -107,7 +108,7 @@ export class WorkspaceInvitesService {
     });
 
     const clientUrl = this.configService.get<string>('CLIENT_URL');
-    const inviteLink = `${clientUrl}/workspace/${workspaceId}/invite/accept?token=${token}`;
+    const inviteLink = `${clientUrl}/invite/workspace/${workspaceId}/accept?token=${token}`;
 
     const workspaceInitial = workspace.name.charAt(0).toUpperCase();
 
@@ -284,7 +285,7 @@ export class WorkspaceInvitesService {
     });
 
     const clientUrl = this.configService.get<string>('CLIENT_URL');
-    const inviteLink = `${clientUrl}/workspace/${workspaceId}/invite/accept?token=${token}`;
+    const inviteLink = `${clientUrl}/invite/workspace/${workspaceId}/accept?token=${token}`;
 
     const workspaceInitial = workspace.name.charAt(0).toUpperCase();
 
@@ -300,6 +301,82 @@ export class WorkspaceInvitesService {
     return {
       success: true,
       message: 'Invitation resent successfully',
+    };
+  }
+
+  async previewWorkspaceInvite(
+    workspaceId: string,
+    token: string,
+    req: Request,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (!user) throw new UnauthorizedException('Unauthenticated');
+
+    if (!workspaceId) throw new BadRequestException('Workspace ID is required');
+    if (!token) throw new BadRequestException('Invite token is required');
+
+    const workspace = await this.prismaService.workspace.findUnique({
+      where: { id: workspaceId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        organization: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const invites = await this.prismaService.workspaceInvite.findMany({
+      where: {
+        workspaceId,
+        email: user.email,
+        status: InviteStatus.PENDING,
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        invitedBy: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    let validInvite: any = null;
+    for (const invite of invites) {
+      const isMatch = await this.hashingService.compareHash(
+        token,
+        invite.token,
+      );
+      if (isMatch) {
+        validInvite = invite;
+        break;
+      }
+    }
+
+    if (!validInvite) {
+      throw new BadRequestException('Invalid or expired invitation token');
+    }
+
+    return {
+      success: true,
+      message: 'Invite details fetched successfully',
+      invite: validInvite,
+      workspace,
     };
   }
 }

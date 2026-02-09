@@ -24,8 +24,7 @@ import sendWorkspaceInviteSchema, {
 } from './dto/send-workspace-invite.schema';
 import { WorkspaceInvitesService } from './workspace-invites.service';
 
-@WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
-@UseGuards(AuthGuard, WorkspaceRoleGuard)
+@UseGuards(AuthGuard)
 @Controller('workspaces/:workspaceId/invites')
 export class WorkspaceInvitesController {
   constructor(
@@ -34,6 +33,8 @@ export class WorkspaceInvitesController {
 
   @Post('/')
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   @UsePipes(new ZodValidationPipe(sendWorkspaceInviteSchema))
   sendInvite(
     @Param('workspaceId') workspaceId: string,
@@ -49,6 +50,8 @@ export class WorkspaceInvitesController {
 
   @Get('/')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   getInvites(
     @Param('workspaceId') workspaceId: string,
     @Req() req: Request,
@@ -63,6 +66,8 @@ export class WorkspaceInvitesController {
 
   @Delete('/:inviteId')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   revokeInvite(
     @Param('workspaceId') workspaceId: string,
     @Param('inviteId') inviteId: string,
@@ -77,6 +82,8 @@ export class WorkspaceInvitesController {
 
   @Patch('/:inviteId/resend')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   resendInvite(
     @Param('workspaceId') workspaceId: string,
     @Param('inviteId') inviteId: string,
@@ -85,6 +92,20 @@ export class WorkspaceInvitesController {
     return this.workspaceInvitesService.resendWorkspaceInvite(
       workspaceId,
       inviteId,
+      req,
+    );
+  }
+
+  @Get('/preview')
+  @HttpCode(HttpStatus.OK)
+  previewInvite(
+    @Param('workspaceId') workspaceId: string,
+    @Query('token') token: string,
+    @Req() req: Request,
+  ) {
+    return this.workspaceInvitesService.previewWorkspaceInvite(
+      workspaceId,
+      token,
       req,
     );
   }

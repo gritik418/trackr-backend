@@ -94,6 +94,7 @@ enum InviteStatus {
   ACCEPTED
   EXPIRED
   REVOKED
+  REJECTED
 }
 
 model Workspace {
