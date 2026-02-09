@@ -22,6 +22,10 @@ import createTaskSchema, { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto, getTasksSchema } from './dto/get-tasks.schema';
 import { UpdateTaskDto, updateTaskSchema } from './dto/update-task.schema';
 import { AssignTaskDto, assignTaskSchema } from './dto/assign-task.schema';
+import {
+  CreateCommentDto,
+  createCommentSchema,
+} from './dto/create-comment.schema';
 import { TasksService } from './tasks.service';
 
 @UseGuards(AuthGuard)
@@ -94,5 +98,19 @@ export class TasksController {
     @Req() req: Request,
   ) {
     return this.tasksService.assignTask(projectId, taskId, data, req);
+  }
+
+  @Post('/:taskId/comments')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
+  @UsePipes(new ZodValidationPipe(createCommentSchema))
+  createComment(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Body() data: CreateCommentDto,
+    @Req() req: Request,
+  ) {
+    return this.tasksService.createComment(projectId, taskId, data, req);
   }
 }

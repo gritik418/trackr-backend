@@ -10,6 +10,7 @@ import { AssignTaskDto } from './dto/assign-task.schema';
 import { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto } from './dto/get-tasks.schema';
 import { UpdateTaskDto } from './dto/update-task.schema';
+import { CreateCommentDto } from './dto/create-comment.schema';
 import {
   ProjectNature,
   ProjectRole,
@@ -622,6 +623,90 @@ export class TasksService {
       success: true,
       message: 'Tasks fetched successfully',
       tasks,
+    };
+  }
+
+  async createComment(
+    projectId: string,
+    taskId: string,
+    data: CreateCommentDto,
+    req: Request,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const task = await this.prismaService.task.findUnique({
+      where: { id: taskId },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (task.projectId !== projectId) {
+      throw new BadRequestException('Task does not belong to this project');
+    }
+
+    const workspaceMember = await this.prismaService.workspaceMember.findUnique(
+      {
+        where: {
+          userId_workspaceId: {
+            userId,
+            workspaceId: project.workspaceId,
+          },
+        },
+      },
+    );
+
+    if (!workspaceMember) {
+      throw new UnauthorizedException('You are not a member of this workspace');
+    }
+
+    if (project.nature === ProjectNature.PRIVATE) {
+      const projectMember = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+
+      if (!projectMember) {
+        throw new UnauthorizedException('You are not a member of this project');
+      }
+    }
+
+    const comment = await this.prismaService.taskComment.create({
+      data: {
+        taskId,
+        userId,
+        content: data.content,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Comment added successfully',
+      comment,
     };
   }
 }
