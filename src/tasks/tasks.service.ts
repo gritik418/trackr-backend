@@ -840,4 +840,65 @@ export class TasksService {
       comment: updatedComment,
     };
   }
+
+  async deleteComment(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    req: Request,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const comment = await this.prismaService.taskComment.findUnique({
+      where: { id: commentId },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    if (comment.taskId !== taskId) {
+      throw new BadRequestException('Comment does not belong to this task');
+    }
+
+    const projectMember = await this.prismaService.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId,
+        },
+      },
+    });
+
+    // Only comment author OR project OWNER/ADMIN can delete
+    const isAuthor = comment.userId === userId;
+    const isModerator =
+      projectMember &&
+      (projectMember.role === ProjectRole.OWNER ||
+        projectMember.role === ProjectRole.ADMIN);
+
+    if (!isAuthor && !isModerator) {
+      throw new UnauthorizedException(
+        'You are not authorized to delete this comment',
+      );
+    }
+
+    await this.prismaService.taskComment.delete({
+      where: { id: commentId },
+    });
+
+    return {
+      success: true,
+      message: 'Comment deleted successfully',
+    };
+  }
 }

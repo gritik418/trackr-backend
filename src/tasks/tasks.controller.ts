@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -149,5 +150,18 @@ export class TasksController {
       data,
       req,
     );
+  }
+
+  @Delete('/:taskId/comments/:commentId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
+  deleteComment(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Param('commentId') commentId: string,
+    @Req() req: Request,
+  ) {
+    return this.tasksService.deleteComment(projectId, taskId, commentId, req);
   }
 }
