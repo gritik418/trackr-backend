@@ -23,6 +23,10 @@ import {
   UpdateProjectDto,
   updateProjectSchema,
 } from './dto/update-project.schema';
+import {
+  AddProjectMemberDto,
+  addProjectMemberSchema,
+} from './dto/add-member.schema';
 import { ProjectsService } from './projects.service';
 import { ProjectRoleGuard } from './guards/project-role.guard';
 import { ProjectRoles } from './decorators/project-roles.decorator';
@@ -107,5 +111,17 @@ export class ProjectsController {
   @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
   deleteProject(@Param('projectId') projectId: string, @Req() req: Request) {
     return this.projectsService.deleteProject(projectId, req);
+  }
+
+  @Post('/:projectId/members')
+  @HttpCode(HttpStatus.CREATED)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @UsePipes(new ZodValidationPipe(addProjectMemberSchema))
+  addProjectMember(
+    @Param('projectId') projectId: string,
+    @Body() data: AddProjectMemberDto,
+    @Req() req: Request,
+  ) {
+    return this.projectsService.addProjectMember(projectId, data, req);
   }
 }

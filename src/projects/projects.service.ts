@@ -10,6 +10,7 @@ import { ProjectNature, ProjectRole } from 'generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.schema';
 import { UpdateProjectDto } from './dto/update-project.schema';
+import { AddProjectMemberDto } from './dto/add-member.schema';
 
 @Injectable()
 export class ProjectsService {
@@ -308,6 +309,53 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
+    if (project.nature === ProjectNature.PRIVATE) {
+      const projectMember = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+      if (!projectMember) {
+        throw new UnauthorizedException('You are not a member of this project');
+      }
+      if (
+        projectMember.role !== ProjectRole.OWNER &&
+        projectMember.role !== ProjectRole.ADMIN
+      ) {
+        throw new ForbiddenException(
+          'You are not allowed to delete this project',
+        );
+      }
+    }
+
+    if (project.nature === ProjectNature.PUBLIC) {
+      const workspaceMember =
+        await this.prismaService.workspaceMember.findUnique({
+          where: {
+            userId_workspaceId: {
+              userId,
+              workspaceId: project.workspaceId,
+            },
+          },
+        });
+      if (!workspaceMember) {
+        throw new UnauthorizedException(
+          'You are not a member of this workspace',
+        );
+      }
+      if (
+        workspaceMember.role !== ProjectRole.OWNER &&
+        workspaceMember.role !== ProjectRole.ADMIN
+      ) {
+        throw new ForbiddenException(
+          'You are not allowed to delete this project',
+        );
+      }
+    }
+
     await this.prismaService.project.delete({
       where: { id: projectId },
     });
@@ -315,6 +363,77 @@ export class ProjectsService {
     return {
       success: true,
       message: 'Project deleted successfully',
+    };
+  }
+
+  async addProjectMember(
+    projectId: string,
+    data: AddProjectMemberDto,
+    req: Request,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const { userId: targetUserId, role } = data;
+
+    const workspaceMember = await this.prismaService.workspaceMember.findUnique(
+      {
+        where: {
+          userId_workspaceId: {
+            userId: targetUserId,
+            workspaceId: project.workspaceId,
+          },
+        },
+      },
+    );
+
+    if (!workspaceMember) {
+      throw new BadRequestException('User is not a member of this workspace');
+    }
+
+    const existingMember = await this.prismaService.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId: targetUserId,
+        },
+      },
+    });
+
+    if (existingMember) {
+      throw new BadRequestException('User is already a member of this project');
+    }
+
+    const member = await this.prismaService.projectMember.create({
+      data: {
+        projectId,
+        userId: targetUserId,
+        role,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Member added to project successfully',
+      member,
     };
   }
 }
