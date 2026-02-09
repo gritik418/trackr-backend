@@ -436,4 +436,72 @@ export class ProjectsService {
       member,
     };
   }
+
+  async removeProjectMember(
+    projectId: string,
+    targetUserId: string,
+    req: Request,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    // Check if the user making the request has permission (OWNER or ADMIN)
+    const requester = await this.prismaService.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId,
+        },
+      },
+    });
+
+    if (!requester || !['OWNER', 'ADMIN'].includes(requester.role)) {
+      // Also allow if it's the user removing themselves
+      if (userId !== targetUserId) {
+        throw new ForbiddenException(
+          'Only project owner/admin can remove members.',
+        );
+      }
+    }
+
+    // Cannot remove the owner of the project
+    const memberToRemove = await this.prismaService.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId: targetUserId,
+        },
+      },
+    });
+
+    if (!memberToRemove) {
+      throw new NotFoundException('Member not found in this project');
+    }
+
+    if (memberToRemove.role === 'OWNER') {
+      throw new BadRequestException('Cannot remove the project owner');
+    }
+
+    await this.prismaService.projectMember.delete({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId: targetUserId,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Member removed from project successfully',
+    };
+  }
 }

@@ -124,4 +124,19 @@ export class ProjectsController {
   ) {
     return this.projectsService.addProjectMember(projectId, data, req);
   }
+
+  @Delete('/:projectId/members/:userId')
+  @HttpCode(HttpStatus.OK)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  removeProjectMember(
+    @Param('projectId') projectId: string,
+    @Param('userId') targetUserId: string,
+    @Req() req: Request,
+  ) {
+    return this.projectsService.removeProjectMember(
+      projectId,
+      targetUserId,
+      req,
+    );
+  }
 }
