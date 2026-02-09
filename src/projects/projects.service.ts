@@ -295,4 +295,26 @@ export class ProjectsService {
       members,
     };
   }
+
+  async deleteProject(projectId: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.prismaService.project.delete({
+      where: { id: projectId },
+    });
+
+    return {
+      success: true,
+      message: 'Project deleted successfully',
+    };
+  }
 }

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -98,5 +99,13 @@ export class ProjectsController {
     @Req() req: Request,
   ) {
     return this.projectsService.getProjectMembers(projectId, req);
+  }
+
+  @Delete('/:projectId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
+  deleteProject(@Param('projectId') projectId: string, @Req() req: Request) {
+    return this.projectsService.deleteProject(projectId, req);
   }
 }
