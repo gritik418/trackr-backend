@@ -107,7 +107,7 @@ export class OrgInvitesService {
     });
 
     const clientUrl = this.configService.get<string>('CLIENT_URL');
-    const inviteLink = `${clientUrl}/org/${orgId}/invite/accept?token=${token}`;
+    const inviteLink = `${clientUrl}/invite/org/${orgId}/accept?token=${token}`;
 
     const organizationInitial = organization.name.charAt(0).toUpperCase();
 
@@ -285,7 +285,7 @@ export class OrgInvitesService {
     });
 
     const clientUrl = this.configService.get<string>('CLIENT_URL');
-    const inviteLink = `${clientUrl}/org/${orgId}/invite/accept?token=${token}`;
+    const inviteLink = `${clientUrl}/invite/org/${orgId}/accept?token=${token}`;
 
     const organizationInitial = organization.name.charAt(0).toUpperCase();
 
@@ -382,5 +382,71 @@ export class OrgInvitesService {
         message: 'Successfully joined the organization',
       };
     });
+  }
+
+  async previewOrgInvite(orgId: string, token: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (!user) throw new UnauthorizedException('Unauthenticated');
+
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+    if (!token) throw new BadRequestException('Invite token is required');
+
+    const organization = await this.prismaService.organization.findUnique({
+      where: { id: orgId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const invites = await this.prismaService.organizationInvite.findMany({
+      where: {
+        organizationId: orgId,
+        email: user.email,
+        status: InviteStatus.PENDING,
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        invitedBy: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    let validInvite: OrganizationInvite | null = null;
+    for (const invite of invites) {
+      const isMatch = await this.hashingService.compareHash(
+        token,
+        invite.token,
+      );
+      if (isMatch) {
+        validInvite = invite;
+        break;
+      }
+    }
+
+    if (!validInvite) {
+      throw new BadRequestException('Invalid or expired invitation token');
+    }
+
+    return {
+      success: true,
+      message: 'Invite details fetched successfully',
+      invite: validInvite,
+    };
   }
 }

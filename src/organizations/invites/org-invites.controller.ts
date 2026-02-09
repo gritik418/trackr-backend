@@ -35,8 +35,8 @@ export class OrgInvitesController {
 
   @Post('/')
   @HttpCode(HttpStatus.CREATED)
-  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UseGuards(OrgRoleGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UsePipes(new ZodValidationPipe(sendOrgInviteSchema))
   sendInvite(
     @Param('orgId') orgId: string,
@@ -48,8 +48,8 @@ export class OrgInvitesController {
 
   @Get('/')
   @HttpCode(HttpStatus.OK)
-  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UseGuards(OrgRoleGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   getInvites(
     @Param('orgId') orgId: string,
     @Req() req: Request,
@@ -60,8 +60,8 @@ export class OrgInvitesController {
 
   @Delete('/:inviteId')
   @HttpCode(HttpStatus.OK)
-  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UseGuards(OrgRoleGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   revokeInvite(
     @Param('orgId') orgId: string,
     @Param('inviteId') inviteId: string,
@@ -72,8 +72,8 @@ export class OrgInvitesController {
 
   @Patch('/:inviteId/resend')
   @HttpCode(HttpStatus.OK)
-  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UseGuards(OrgRoleGuard)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   resendInvite(
     @Param('orgId') orgId: string,
     @Param('inviteId') inviteId: string,
@@ -91,5 +91,15 @@ export class OrgInvitesController {
     @Req() req: Request,
   ) {
     return this.orgInvitesService.acceptOrgInvite(orgId, data, req);
+  }
+
+  @Get('/preview')
+  @HttpCode(HttpStatus.OK)
+  previewInvite(
+    @Param('orgId') orgId: string,
+    @Query('token') token: string,
+    @Req() req: Request,
+  ) {
+    return this.orgInvitesService.previewOrgInvite(orgId, token, req);
   }
 }
