@@ -14,22 +14,9 @@ import { UpdateCommentDto } from './dto/update-comment.schema';
 export class CommentsService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async createComment(
-    projectId: string,
-    taskId: string,
-    data: CreateCommentDto,
-    req: Request,
-  ) {
+  async createComment(taskId: string, data: CreateCommentDto, req: Request) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
-
-    const project = await this.prismaService.project.findUnique({
-      where: { id: projectId },
-    });
-
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
 
     const task = await this.prismaService.task.findUnique({
       where: { id: taskId },
@@ -38,9 +25,18 @@ export class CommentsService {
     if (!task) {
       throw new NotFoundException('Task not found');
     }
+    const projectId = task?.projectId;
 
-    if (task.projectId !== projectId) {
-      throw new BadRequestException('Task does not belong to this project');
+    if (!projectId) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
     }
 
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
@@ -98,17 +94,9 @@ export class CommentsService {
     };
   }
 
-  async getComments(projectId: string, taskId: string, req: Request) {
+  async getComments(taskId: string, req: Request) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
-
-    const project = await this.prismaService.project.findUnique({
-      where: { id: projectId },
-    });
-
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
 
     const task = await this.prismaService.task.findUnique({
       where: { id: taskId },
@@ -117,9 +105,17 @@ export class CommentsService {
     if (!task) {
       throw new NotFoundException('Task not found');
     }
+    const projectId = task.projectId;
+    if (!projectId) {
+      throw new NotFoundException('Project not found');
+    }
 
-    if (task.projectId !== projectId) {
-      throw new BadRequestException('Task does not belong to this project');
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
     }
 
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
@@ -179,7 +175,6 @@ export class CommentsService {
   }
 
   async updateComment(
-    projectId: string,
     taskId: string,
     commentId: string,
     data: UpdateCommentDto,
@@ -228,14 +223,21 @@ export class CommentsService {
     };
   }
 
-  async deleteComment(
-    projectId: string,
-    taskId: string,
-    commentId: string,
-    req: Request,
-  ) {
+  async deleteComment(taskId: string, commentId: string, req: Request) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
+    const task = await this.prismaService.task.findUnique({
+      where: { id: taskId },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const projectId = task.projectId;
+    if (!projectId) {
+      throw new NotFoundException('Project not found');
+    }
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
@@ -266,7 +268,6 @@ export class CommentsService {
       },
     });
 
-    // Only comment author OR project OWNER/ADMIN can delete
     const isAuthor = comment.userId === userId;
     const isModerator =
       projectMember &&

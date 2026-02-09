@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -19,10 +18,10 @@ import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
 import { ProjectRoles } from 'src/projects/decorators/project-roles.decorator';
 import { ProjectRoleGuard } from 'src/projects/guards/project-role.guard';
+import { AssignTaskDto, assignTaskSchema } from './dto/assign-task.schema';
 import createTaskSchema, { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto, getTasksSchema } from './dto/get-tasks.schema';
 import { UpdateTaskDto, updateTaskSchema } from './dto/update-task.schema';
-import { AssignTaskDto, assignTaskSchema } from './dto/assign-task.schema';
 import { TasksService } from './tasks.service';
 
 @UseGuards(AuthGuard)
