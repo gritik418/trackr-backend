@@ -11,6 +11,7 @@ import { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto } from './dto/get-tasks.schema';
 import { UpdateTaskDto } from './dto/update-task.schema';
 import { CreateCommentDto } from './dto/create-comment.schema';
+import { UpdateCommentDto } from './dto/update-comment.schema';
 import {
   ProjectNature,
   ProjectRole,
@@ -787,6 +788,56 @@ export class TasksService {
       success: true,
       message: 'Comments fetched successfully',
       comments,
+    };
+  }
+
+  async updateComment(
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    data: UpdateCommentDto,
+    req: Request,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const comment = await this.prismaService.taskComment.findUnique({
+      where: { id: commentId },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    if (comment.userId !== userId) {
+      throw new UnauthorizedException('You can only update your own comments');
+    }
+
+    if (comment.taskId !== taskId) {
+      throw new BadRequestException('Comment does not belong to this task');
+    }
+
+    const updatedComment = await this.prismaService.taskComment.update({
+      where: { id: commentId },
+      data: {
+        content: data.content,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Comment updated successfully',
+      comment: updatedComment,
     };
   }
 }

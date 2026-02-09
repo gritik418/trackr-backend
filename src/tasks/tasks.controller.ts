@@ -26,6 +26,10 @@ import {
   CreateCommentDto,
   createCommentSchema,
 } from './dto/create-comment.schema';
+import {
+  UpdateCommentDto,
+  updateCommentSchema,
+} from './dto/update-comment.schema';
 import { TasksService } from './tasks.service';
 
 @UseGuards(AuthGuard)
@@ -124,5 +128,26 @@ export class TasksController {
     @Req() req: Request,
   ) {
     return this.tasksService.getComments(projectId, taskId, req);
+  }
+
+  @Patch('/:taskId/comments/:commentId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
+  @UsePipes(new ZodValidationPipe(updateCommentSchema))
+  updateComment(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Param('commentId') commentId: string,
+    @Body() data: UpdateCommentDto,
+    @Req() req: Request,
+  ) {
+    return this.tasksService.updateComment(
+      projectId,
+      taskId,
+      commentId,
+      data,
+      req,
+    );
   }
 }
