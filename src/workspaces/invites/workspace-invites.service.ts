@@ -304,6 +304,87 @@ export class WorkspaceInvitesService {
     };
   }
 
+  async acceptWorkspaceInvite(
+    workspaceId: string,
+    data: AcceptWorkspaceInviteDto,
+    req: Request,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const { token } = data;
+
+    const invites = await this.prismaService.workspaceInvite.findMany({
+      where: {
+        workspaceId,
+        email: user.email,
+        status: InviteStatus.PENDING,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    let validInvite: any = null;
+    for (const invite of invites) {
+      const isMatch = await this.hashingService.compareHash(
+        token,
+        invite.token,
+      );
+      if (isMatch) {
+        validInvite = invite;
+        break;
+      }
+    }
+
+    if (!validInvite) {
+      throw new BadRequestException('Invalid or expired invitation token');
+    }
+
+    const existingMember = await this.prismaService.workspaceMember.findFirst({
+      where: {
+        userId,
+        workspaceId,
+      },
+    });
+
+    if (existingMember) {
+      throw new BadRequestException(
+        'You are already a member of this workspace',
+      );
+    }
+
+    return await this.prismaService.$transaction(async (tx) => {
+      await tx.workspaceMember.create({
+        data: {
+          userId,
+          workspaceId,
+          role: validInvite.role,
+        },
+      });
+
+      await tx.workspaceInvite.update({
+        where: { id: validInvite.id },
+        data: {
+          status: InviteStatus.ACCEPTED,
+          acceptedAt: new Date(),
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Successfully joined the workspace',
+      };
+    });
+  }
+
   async previewWorkspaceInvite(
     workspaceId: string,
     token: string,
@@ -353,6 +434,28 @@ export class WorkspaceInvitesService {
             email: true,
           },
         },
+        workspace: {
+          select: {
+            name: true,
+            iconUrl: true,
+            description: true,
+            owner: {
+              select: {
+                name: true,
+                email: true,
+                avatarUrl: true,
+              },
+            },
+            organization: {
+              select: {
+                name: true,
+                logoUrl: true,
+                description: true,
+                websiteUrl: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -376,7 +479,6 @@ export class WorkspaceInvitesService {
       success: true,
       message: 'Invite details fetched successfully',
       invite: validInvite,
-      workspace,
     };
   }
 }

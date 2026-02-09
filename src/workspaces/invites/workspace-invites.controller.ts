@@ -22,6 +22,10 @@ import { WorkspaceRoleGuard } from '../guards/workspace-role.guard';
 import sendWorkspaceInviteSchema, {
   SendWorkspaceInviteDto,
 } from './dto/send-workspace-invite.schema';
+import {
+  AcceptWorkspaceInviteDto,
+  acceptWorkspaceInviteSchema,
+} from './dto/accept-workspace-invite.schema';
 import { WorkspaceInvitesService } from './workspace-invites.service';
 
 @UseGuards(AuthGuard)
@@ -92,6 +96,21 @@ export class WorkspaceInvitesController {
     return this.workspaceInvitesService.resendWorkspaceInvite(
       workspaceId,
       inviteId,
+      req,
+    );
+  }
+
+  @Post('/accept')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(acceptWorkspaceInviteSchema))
+  acceptInvite(
+    @Param('workspaceId') workspaceId: string,
+    @Body() data: AcceptWorkspaceInviteDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaceInvitesService.acceptWorkspaceInvite(
+      workspaceId,
+      data,
       req,
     );
   }
