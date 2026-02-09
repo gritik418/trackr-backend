@@ -3,10 +3,12 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SendOrgInviteDto } from './dto/send-organization-invite.schema';
+import { AcceptOrgInviteDto } from './dto/accept-organization-invite.schema';
 import { v4 as uuidv4 } from 'uuid';
 import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
@@ -14,6 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { InviteStatus } from 'generated/prisma/enums';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { ORG_INVITE_EXPIRY_MS } from 'src/common/constants/expiration.constants';
+import { OrganizationInvite } from 'generated/prisma/browser';
 
 @Injectable()
 export class OrgInvitesService {
@@ -297,7 +300,87 @@ export class OrgInvitesService {
 
     return {
       success: true,
-      message: 'Invitation resent successfully',
+      message: 'Invitation resentment successfully',
     };
+  }
+
+  async acceptOrgInvite(orgId: string, data: AcceptOrgInviteDto, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const { token } = data;
+
+    const invites = await this.prismaService.organizationInvite.findMany({
+      where: {
+        organizationId: orgId,
+        email: user.email,
+        status: InviteStatus.PENDING,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    let validInvite: OrganizationInvite | null = null;
+    for (const invite of invites) {
+      const isMatch = await this.hashingService.compareHash(
+        token,
+        invite.token,
+      );
+      if (isMatch) {
+        validInvite = invite;
+        break;
+      }
+    }
+
+    if (!validInvite) {
+      throw new BadRequestException('Invalid or expired invitation token');
+    }
+
+    const existingMember =
+      await this.prismaService.organizationMember.findUnique({
+        where: {
+          userId_organizationId: {
+            userId,
+            organizationId: orgId,
+          },
+        },
+      });
+
+    if (existingMember) {
+      throw new BadRequestException(
+        'You are already a member of this organization',
+      );
+    }
+
+    return await this.prismaService.$transaction(async (tx) => {
+      await tx.organizationMember.create({
+        data: {
+          userId,
+          organizationId: orgId,
+          role: validInvite.role,
+        },
+      });
+
+      await tx.organizationInvite.update({
+        where: { id: validInvite.id },
+        data: {
+          status: InviteStatus.ACCEPTED,
+          acceptedAt: new Date(),
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Successfully joined the organization',
+      };
+    });
   }
 }

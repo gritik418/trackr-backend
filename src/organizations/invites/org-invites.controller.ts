@@ -22,16 +22,21 @@ import { OrgRoleGuard } from '../guards/org-role/org-role.guard';
 import sendOrgInviteSchema, {
   SendOrgInviteDto,
 } from './dto/send-organization-invite.schema';
+import {
+  AcceptOrgInviteDto,
+  acceptOrgInviteSchema,
+} from './dto/accept-organization-invite.schema';
 import { OrgInvitesService } from './org-invites.service';
 
-@OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
-@UseGuards(AuthGuard, OrgRoleGuard)
+@UseGuards(AuthGuard)
 @Controller('organizations/:orgId/invites')
 export class OrgInvitesController {
   constructor(private readonly orgInvitesService: OrgInvitesService) {}
 
   @Post('/')
   @HttpCode(HttpStatus.CREATED)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
+  @UseGuards(OrgRoleGuard)
   @UsePipes(new ZodValidationPipe(sendOrgInviteSchema))
   sendInvite(
     @Param('orgId') orgId: string,
@@ -43,6 +48,8 @@ export class OrgInvitesController {
 
   @Get('/')
   @HttpCode(HttpStatus.OK)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
+  @UseGuards(OrgRoleGuard)
   getInvites(
     @Param('orgId') orgId: string,
     @Req() req: Request,
@@ -53,6 +60,8 @@ export class OrgInvitesController {
 
   @Delete('/:inviteId')
   @HttpCode(HttpStatus.OK)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
+  @UseGuards(OrgRoleGuard)
   revokeInvite(
     @Param('orgId') orgId: string,
     @Param('inviteId') inviteId: string,
@@ -63,11 +72,24 @@ export class OrgInvitesController {
 
   @Patch('/:inviteId/resend')
   @HttpCode(HttpStatus.OK)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
+  @UseGuards(OrgRoleGuard)
   resendInvite(
     @Param('orgId') orgId: string,
     @Param('inviteId') inviteId: string,
     @Req() req: Request,
   ) {
     return this.orgInvitesService.resendOrgInvite(orgId, inviteId, req);
+  }
+
+  @Post('/accept')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(acceptOrgInviteSchema))
+  acceptInvite(
+    @Param('orgId') orgId: string,
+    @Body() data: AcceptOrgInviteDto,
+    @Req() req: Request,
+  ) {
+    return this.orgInvitesService.acceptOrgInvite(orgId, data, req);
   }
 }
