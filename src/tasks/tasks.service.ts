@@ -624,4 +624,39 @@ export class TasksService {
       tasks,
     };
   }
+
+  async getTaskById(projectId: string, taskId: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const task = await this.prismaService.task.findUnique({
+      where: { id: taskId },
+      include: {
+        assignees: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+        category: true,
+        links: true,
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (task.projectId !== projectId) {
+      throw new BadRequestException('Task does not belong to this project');
+    }
+
+    return {
+      success: true,
+      message: 'Task fetched successfully',
+      task,
+    };
+  }
 }

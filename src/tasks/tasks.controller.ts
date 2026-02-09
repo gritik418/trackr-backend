@@ -68,6 +68,18 @@ export class TasksController {
     return this.tasksService.getMyTasks(projectId, query, req);
   }
 
+  @Get('/:taskId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
+  getTaskById(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Req() req: Request,
+  ) {
+    return this.tasksService.getTaskById(projectId, taskId, req);
+  }
+
   @Patch('/:taskId')
   @HttpCode(HttpStatus.OK)
   @UseGuards(ProjectRoleGuard)
