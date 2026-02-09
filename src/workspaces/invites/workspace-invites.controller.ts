@@ -115,6 +115,21 @@ export class WorkspaceInvitesController {
     );
   }
 
+  @Post('/reject')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(acceptWorkspaceInviteSchema))
+  rejectInvite(
+    @Param('workspaceId') workspaceId: string,
+    @Body() data: AcceptWorkspaceInviteDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaceInvitesService.rejectWorkspaceInvite(
+      workspaceId,
+      data,
+      req,
+    );
+  }
+
   @Get('/preview')
   @HttpCode(HttpStatus.OK)
   previewInvite(

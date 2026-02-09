@@ -481,4 +481,61 @@ export class WorkspaceInvitesService {
       invite: validInvite,
     };
   }
+
+  async rejectWorkspaceInvite(
+    workspaceId: string,
+    data: AcceptWorkspaceInviteDto,
+    req: Request,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const { token } = data;
+
+    const invites = await this.prismaService.workspaceInvite.findMany({
+      where: {
+        workspaceId,
+        email: user.email,
+        status: InviteStatus.PENDING,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    let validInvite: any = null;
+    for (const invite of invites) {
+      const isMatch = await this.hashingService.compareHash(
+        token,
+        invite.token,
+      );
+      if (isMatch) {
+        validInvite = invite;
+        break;
+      }
+    }
+
+    if (!validInvite) {
+      throw new BadRequestException('Invalid or expired invitation token');
+    }
+
+    await this.prismaService.workspaceInvite.update({
+      where: { id: validInvite.id },
+      data: {
+        status: InviteStatus.REJECTED,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Invitation rejected successfully',
+    };
+  }
 }
