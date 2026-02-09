@@ -113,4 +113,16 @@ export class TasksController {
   ) {
     return this.tasksService.createComment(projectId, taskId, data, req);
   }
+
+  @Get('/:taskId/comments')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
+  getComments(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Req() req: Request,
+  ) {
+    return this.tasksService.getComments(projectId, taskId, req);
+  }
 }

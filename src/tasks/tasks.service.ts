@@ -709,4 +709,84 @@ export class TasksService {
       comment,
     };
   }
+
+  async getComments(projectId: string, taskId: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const task = await this.prismaService.task.findUnique({
+      where: { id: taskId },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (task.projectId !== projectId) {
+      throw new BadRequestException('Task does not belong to this project');
+    }
+
+    const workspaceMember = await this.prismaService.workspaceMember.findUnique(
+      {
+        where: {
+          userId_workspaceId: {
+            userId,
+            workspaceId: project.workspaceId,
+          },
+        },
+      },
+    );
+
+    if (!workspaceMember) {
+      throw new UnauthorizedException('You are not a member of this workspace');
+    }
+
+    if (project.nature === ProjectNature.PRIVATE) {
+      const projectMember = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+
+      if (!projectMember) {
+        throw new UnauthorizedException('You are not a member of this project');
+      }
+    }
+
+    const comments = await this.prismaService.taskComment.findMany({
+      where: {
+        taskId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Comments fetched successfully',
+      comments,
+    };
+  }
 }
