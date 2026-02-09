@@ -23,14 +23,6 @@ import createTaskSchema, { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto, getTasksSchema } from './dto/get-tasks.schema';
 import { UpdateTaskDto, updateTaskSchema } from './dto/update-task.schema';
 import { AssignTaskDto, assignTaskSchema } from './dto/assign-task.schema';
-import {
-  CreateCommentDto,
-  createCommentSchema,
-} from './dto/create-comment.schema';
-import {
-  UpdateCommentDto,
-  updateCommentSchema,
-} from './dto/update-comment.schema';
 import { TasksService } from './tasks.service';
 
 @UseGuards(AuthGuard)
@@ -71,7 +63,7 @@ export class TasksController {
   @UsePipes(new ZodValidationPipe(getTasksSchema))
   getMyTasks(
     @Param('projectId') projectId: string,
-    @Query() query: Omit<GetTasksDto, 'assignedToId'>,
+    @Query() query: GetTasksDto,
     @Req() req: Request,
   ) {
     return this.tasksService.getMyTasks(projectId, query, req);
@@ -94,7 +86,7 @@ export class TasksController {
   @Post('/:taskId/assign')
   @HttpCode(HttpStatus.OK)
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
   @UsePipes(new ZodValidationPipe(assignTaskSchema))
   assignTask(
     @Param('projectId') projectId: string,
@@ -103,65 +95,5 @@ export class TasksController {
     @Req() req: Request,
   ) {
     return this.tasksService.assignTask(projectId, taskId, data, req);
-  }
-
-  @Post('/:taskId/comments')
-  @HttpCode(HttpStatus.CREATED)
-  @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
-  @UsePipes(new ZodValidationPipe(createCommentSchema))
-  createComment(
-    @Param('projectId') projectId: string,
-    @Param('taskId') taskId: string,
-    @Body() data: CreateCommentDto,
-    @Req() req: Request,
-  ) {
-    return this.tasksService.createComment(projectId, taskId, data, req);
-  }
-
-  @Get('/:taskId/comments')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
-  getComments(
-    @Param('projectId') projectId: string,
-    @Param('taskId') taskId: string,
-    @Req() req: Request,
-  ) {
-    return this.tasksService.getComments(projectId, taskId, req);
-  }
-
-  @Patch('/:taskId/comments/:commentId')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
-  @UsePipes(new ZodValidationPipe(updateCommentSchema))
-  updateComment(
-    @Param('projectId') projectId: string,
-    @Param('taskId') taskId: string,
-    @Param('commentId') commentId: string,
-    @Body() data: UpdateCommentDto,
-    @Req() req: Request,
-  ) {
-    return this.tasksService.updateComment(
-      projectId,
-      taskId,
-      commentId,
-      data,
-      req,
-    );
-  }
-
-  @Delete('/:taskId/comments/:commentId')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
-  deleteComment(
-    @Param('projectId') projectId: string,
-    @Param('taskId') taskId: string,
-    @Param('commentId') commentId: string,
-    @Req() req: Request,
-  ) {
-    return this.tasksService.deleteComment(projectId, taskId, commentId, req);
   }
 }
