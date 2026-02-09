@@ -427,13 +427,13 @@ export class OrgInvitesService {
     await this.prismaService.organizationInvite.update({
       where: { id: validInvite.id },
       data: {
-        status: InviteStatus.REVOKED, // Using REVOKED to mean declined by user for now
+        status: InviteStatus.REJECTED,
       },
     });
 
     return {
       success: true,
-      message: 'Invitation declined successfully',
+      message: 'Invitation rejected successfully',
     };
   }
 
