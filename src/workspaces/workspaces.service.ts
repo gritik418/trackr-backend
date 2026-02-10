@@ -12,10 +12,14 @@ import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 import { Request } from 'express';
 import { GetTasksDto } from 'src/tasks/dto/get-tasks.schema';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   private async isOrgAdminOrOwner(
     orgId: string,
@@ -105,6 +109,18 @@ export class WorkspacesService {
         user: sanitizeUser(m.user),
       })),
     };
+
+    await this.auditLogsService.createLog({
+      action: 'WORKSPACE_CREATE',
+      entityType: 'WORKSPACE',
+      entityId: workspace.id,
+      organizationId: orgId,
+      workspaceId: workspace.id,
+      userId: req.user.id,
+      details: { name: workspace.name, slug: workspace.slug },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
 
     return {
       success: true,
@@ -385,6 +401,18 @@ export class WorkspacesService {
       },
     });
 
+    await this.auditLogsService.createLog({
+      action: 'WORKSPACE_UPDATE',
+      entityType: 'WORKSPACE',
+      entityId: workspaceId,
+      organizationId: updatedWorkspace.organizationId,
+      workspaceId: workspaceId,
+      userId: req.user.id,
+      details: { name, slug, description, iconUrl },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
     return {
       success: true,
       message: 'Workspace updated successfully.',
@@ -424,6 +452,18 @@ export class WorkspacesService {
 
     await this.prismaService.workspace.delete({
       where: { id: workspaceId },
+    });
+
+    await this.auditLogsService.createLog({
+      action: 'WORKSPACE_DELETE',
+      entityType: 'WORKSPACE',
+      entityId: workspaceId,
+      organizationId: workspace.organizationId,
+      workspaceId: workspaceId,
+      userId: req.user.id,
+      details: { name: workspace.name },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
@@ -516,6 +556,18 @@ export class WorkspacesService {
       },
     });
 
+    await this.auditLogsService.createLog({
+      action: 'WORKSPACE_MEMBER_ADD',
+      entityType: 'WORKSPACE_MEMBER',
+      entityId: user.id,
+      organizationId: workspace.organizationId,
+      workspaceId: workspaceId,
+      userId: req.user.id,
+      details: { addedUserId: user.id, role },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
     return {
       success: true,
       message: 'Member added to workspace successfully.',
@@ -580,6 +632,22 @@ export class WorkspacesService {
       data: { role },
     });
 
+    await this.auditLogsService.createLog({
+      action: 'WORKSPACE_MEMBER_ROLE_UPDATE',
+      entityType: 'WORKSPACE_MEMBER',
+      entityId: memberId,
+      organizationId: member.workspace.organizationId,
+      workspaceId: workspaceId,
+      userId: req.user.id,
+      details: {
+        previousRole: member.role,
+        newRole: role,
+        targetUserId: member.userId,
+      },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
     return {
       success: true,
       message: 'Member role updated successfully.',
@@ -639,6 +707,18 @@ export class WorkspacesService {
 
     await this.prismaService.workspaceMember.delete({
       where: { id: memberId },
+    });
+
+    await this.auditLogsService.createLog({
+      action: 'WORKSPACE_MEMBER_REMOVE',
+      entityType: 'WORKSPACE_MEMBER',
+      entityId: memberId,
+      organizationId: member.workspace.organizationId,
+      workspaceId: workspaceId,
+      userId: req.user.id,
+      details: { removedUserId: member.userId, role: member.role },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
