@@ -247,4 +247,63 @@ export class OrganizationsService {
       message: 'Organization deleted successfully.',
     };
   }
+
+  async removeMember(orgId: string, memberId: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+
+    const member = await this.prismaService.organizationMember.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!member || member.organizationId !== orgId) {
+      throw new NotFoundException('Member not found in this organization.');
+    }
+
+    if (req.user.id === member.userId) {
+      throw new BadRequestException('You cannot remove yourself.');
+    }
+
+    const requester = await this.prismaService.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: req.user.id,
+          organizationId: orgId,
+        },
+      },
+    });
+
+    if (!requester) {
+      throw new ForbiddenException(
+        'You are not a member of this organization.',
+      );
+    }
+
+    if (member.role === 'OWNER') {
+      throw new ForbiddenException('Organization owner cannot be removed.');
+    }
+
+    if (requester.role === 'ADMIN' && member.role === 'ADMIN') {
+      throw new ForbiddenException('Admins cannot remove other admins.');
+    }
+
+    if (
+      requester.role !== 'OWNER' &&
+      requester.role !== 'ADMIN' &&
+      member.userId !== req.user.id
+    ) {
+      throw new ForbiddenException(
+        'You do not have permission to remove this member.',
+      );
+    }
+
+    await this.prismaService.organizationMember.delete({
+      where: { id: memberId },
+    });
+
+    return {
+      success: true,
+      message: 'Member removed successfully.',
+    };
+  }
 }

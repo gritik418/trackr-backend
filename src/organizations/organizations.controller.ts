@@ -91,4 +91,15 @@ export class OrganizationsController {
   deleteOrganization(@Param('orgId') orgId: string, @Req() req: Request) {
     return this.orgrganizationService.deleteOrganization(orgId, req);
   }
+  @Delete('/:orgId/members/:memberId')
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
+  @UseGuards(OrgRoleGuard)
+  @HttpCode(HttpStatus.OK)
+  removeMember(
+    @Param('orgId') orgId: string,
+    @Param('memberId') memberId: string,
+    @Req() req: Request,
+  ) {
+    return this.orgrganizationService.removeMember(orgId, memberId, req);
+  }
 }
