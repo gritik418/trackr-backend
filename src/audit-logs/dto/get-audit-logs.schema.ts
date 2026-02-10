@@ -4,8 +4,8 @@ import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
 export const getAuditLogsSchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
   page: z.coerce.number().min(1).default(1),
-  action: z.nativeEnum(AuditAction).optional(),
-  entityType: z.nativeEnum(AuditEntityType).optional(),
+  action: z.enum(AuditAction).optional(),
+  entityType: z.enum(AuditEntityType).optional(),
   entityId: z.string().optional(),
   userId: z.string().optional(),
 });

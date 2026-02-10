@@ -41,9 +41,9 @@ export class WorkspacesController {
 
   @Post('organizations/:orgId/workspaces')
   @UseGuards(OrgRoleGuard)
+  @UsePipes(new ZodValidationPipe(createWorkspaceSchema))
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
-  @UsePipes(new ZodValidationPipe(createWorkspaceSchema))
   createWorkspace(
     @Param('orgId') orgId: string,
     @Body() data: CreateWorkspaceDto,

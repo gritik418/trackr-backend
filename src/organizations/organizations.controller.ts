@@ -36,8 +36,11 @@ export class OrganizationsController {
 
   @Post('/')
   @HttpCode(HttpStatus.CREATED)
-  @UsePipes(new ZodValidationPipe(createOrganizationSchema))
-  create(@Body() data: CreateOrganizationDto, @Req() req: Request) {
+  create(
+    @Body(new ZodValidationPipe(createOrganizationSchema))
+    data: CreateOrganizationDto,
+    @Req() req: Request,
+  ) {
     return this.orgrganizationService.createOrganization(data, req);
   }
 
@@ -70,9 +73,9 @@ export class OrganizationsController {
   @OrgRoles(OrgRole.OWNER)
   @UseGuards(OrgRoleGuard)
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ZodValidationPipe(updateOrganizationSchema))
   updateOrganization(
-    @Body() data: UpdateOrganizationDto,
+    @Body(new ZodValidationPipe(updateOrganizationSchema))
+    data: UpdateOrganizationDto,
     @Param('orgId') orgId: string,
     @Req() req: Request,
   ) {
@@ -111,11 +114,11 @@ export class OrganizationsController {
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UseGuards(OrgRoleGuard)
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ZodValidationPipe(updateMemberRoleSchema))
   updateMemberRole(
     @Param('orgId') orgId: string,
     @Param('memberId') memberId: string,
-    @Body() data: UpdateMemberRoleDto,
+    @Body(new ZodValidationPipe(updateMemberRoleSchema))
+    data: UpdateMemberRoleDto,
     @Req() req: Request,
   ) {
     return this.orgrganizationService.updateMemberRole(
