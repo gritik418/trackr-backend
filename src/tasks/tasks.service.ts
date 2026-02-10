@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 import { AssignTaskDto } from './dto/assign-task.schema';
 import { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto } from './dto/get-tasks.schema';
@@ -18,7 +19,10 @@ import {
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async createTask(projectId: string, data: CreateTaskDto, req: Request) {
     const userId = req.user?.id;
@@ -38,6 +42,7 @@ export class TasksService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -168,6 +173,22 @@ export class TasksService {
       },
     });
 
+    await this.auditLogsService.createLog({
+      action: 'TASK_CREATE',
+      entityType: 'TASK',
+      entityId: task.id,
+      organizationId: project.workspace.organizationId,
+      workspaceId,
+      userId,
+      details: {
+        title: task.title,
+        status: task.status,
+        priority: task.priority,
+      },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
     return {
       success: true,
       message: 'Task created successfully',
@@ -283,6 +304,7 @@ export class TasksService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -405,6 +427,18 @@ export class TasksService {
       },
     });
 
+    await this.auditLogsService.createLog({
+      action: 'TASK_UPDATE',
+      entityType: 'TASK',
+      entityId: taskId,
+      organizationId: project.workspace.organizationId,
+      workspaceId,
+      userId,
+      details: { title, status, priority, tag },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
     return {
       success: true,
       message: 'Task updated successfully',
@@ -425,6 +459,7 @@ export class TasksService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -532,6 +567,18 @@ export class TasksService {
         category: true,
         links: true,
       },
+    });
+
+    await this.auditLogsService.createLog({
+      action: 'TASK_ASSIGN',
+      entityType: 'TASK',
+      entityId: taskId,
+      organizationId: project.workspace.organizationId,
+      workspaceId: project.workspaceId,
+      userId,
+      details: { assigneeId },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
