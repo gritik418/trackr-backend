@@ -11,10 +11,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrganizationDto } from './dto/create-organization.schema';
 import { UpdateOrganizationDto } from './dto/update-organization.schema';
 import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 
 @Injectable()
 export class OrganizationsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async createOrganization(data: CreateOrganizationDto, req: Request) {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
@@ -63,6 +67,17 @@ export class OrganizationsService {
       owner: sanitizeUser(org.owner),
       members: org.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
     };
+
+    await this.auditLogsService.createLog({
+      action: 'ORGANIZATION_CREATE',
+      entityType: 'ORGANIZATION',
+      entityId: org.id,
+      organizationId: org.id,
+      userId: req.user.id,
+      details: { name: org.name, slug: org.slug },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
 
     return {
       success: true,
@@ -199,6 +214,18 @@ export class OrganizationsService {
       owner: sanitizeUser(org.owner),
       members: org.members.map((m) => ({ ...m, user: sanitizeUser(m.user) })),
     };
+
+    await this.auditLogsService.createLog({
+      action: 'ORGANIZATION_UPDATE',
+      entityType: 'ORGANIZATION',
+      entityId: orgId,
+      organizationId: orgId,
+      userId: req.user.id,
+      details: updates,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
     return {
       success: true,
       message: 'Organization updated successfully.',
@@ -234,7 +261,7 @@ export class OrganizationsService {
 
     const organization = await this.prismaService.organization.findUnique({
       where: { id: orgId },
-      select: { ownerId: true },
+      select: { ownerId: true, name: true },
     });
     if (!organization) throw new NotFoundException('Organization not found.');
 
@@ -242,6 +269,17 @@ export class OrganizationsService {
       throw new ForbiddenException('Only organization owner can delete.');
 
     await this.prismaService.organization.delete({ where: { id: orgId } });
+
+    await this.auditLogsService.createLog({
+      action: 'ORGANIZATION_DELETE',
+      entityType: 'ORGANIZATION',
+      entityId: orgId,
+      organizationId: orgId,
+      userId: req.user.id,
+      details: { name: organization.name },
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
 
     return {
       success: true,
@@ -302,6 +340,17 @@ export class OrganizationsService {
       where: { id: memberId },
     });
 
+    await this.auditLogsService.createLog({
+      action: 'ORGANIZATION_MEMBER_REMOVE',
+      entityType: 'ORGANIZATION_MEMBER',
+      entityId: memberId,
+      organizationId: orgId,
+      userId: req.user.id,
+      details: { removedUserId: member.userId, role: member.role },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
     return {
       success: true,
       message: 'Member removed successfully.',
@@ -351,7 +400,7 @@ export class OrganizationsService {
       (member.role === 'ADMIN' || role === 'OWNER')
     ) {
       throw new ForbiddenException(
-        'Admins cannot change roles of other admins or promote to owner.',
+        'Admins cannot change roles of other admins.',
       );
     }
 
@@ -393,6 +442,21 @@ export class OrganizationsService {
           },
         });
       }
+    });
+
+    await this.auditLogsService.createLog({
+      action: 'ORGANIZATION_MEMBER_ROLE_UPDATE',
+      entityType: 'ORGANIZATION_MEMBER',
+      entityId: memberId,
+      organizationId: orgId,
+      userId: req.user.id,
+      details: {
+        previousRole: member.role,
+        newRole: role,
+        targetUserId: member.userId,
+      },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
