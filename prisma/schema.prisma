@@ -39,6 +39,29 @@ model User {
 
   assignedTasks       Task[]               @relation("TaskAssignees")
   createdTasks        Task[]               @relation("CreatedTasks")
+  auditLogs          AuditLog[]
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  workspaceId    String?
+  userId         String?
+  action         String
+  entityType     String
+  entityId       String
+  details        Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  workspace    Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([workspaceId])
+  @@index([userId])
 }
 
 model Organization {
@@ -57,6 +80,7 @@ model Organization {
   owner      User                 @relation(fields: [ownerId], references: [id])
   members    OrganizationMember[]
   workspaces Workspace[]
+  auditLogs  AuditLog[]
 }
 
 model OrganizationMember {
@@ -114,6 +138,7 @@ model Workspace {
   projects       Project[]
   tasks          Task[]
   invites        WorkspaceInvite[]
+  auditLogs      AuditLog[]
 }
 
 model WorkspaceMember {
