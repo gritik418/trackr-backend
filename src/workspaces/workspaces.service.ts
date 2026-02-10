@@ -13,6 +13,7 @@ import { Request } from 'express';
 import { GetTasksDto } from 'src/tasks/dto/get-tasks.schema';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
+import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
 
 @Injectable()
 export class WorkspacesService {
@@ -111,8 +112,8 @@ export class WorkspacesService {
     };
 
     await this.auditLogsService.createLog({
-      action: 'WORKSPACE_CREATE',
-      entityType: 'WORKSPACE',
+      action: AuditAction.WORKSPACE_CREATE,
+      entityType: AuditEntityType.WORKSPACE,
       entityId: workspace.id,
       organizationId: orgId,
       workspaceId: workspace.id,
@@ -402,8 +403,8 @@ export class WorkspacesService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'WORKSPACE_UPDATE',
-      entityType: 'WORKSPACE',
+      action: AuditAction.WORKSPACE_UPDATE,
+      entityType: AuditEntityType.WORKSPACE,
       entityId: workspaceId,
       organizationId: updatedWorkspace.organizationId,
       workspaceId: workspaceId,
@@ -455,8 +456,8 @@ export class WorkspacesService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'WORKSPACE_DELETE',
-      entityType: 'WORKSPACE',
+      action: AuditAction.WORKSPACE_DELETE,
+      entityType: AuditEntityType.WORKSPACE,
       entityId: workspaceId,
       organizationId: workspace.organizationId,
       workspaceId: workspaceId,
@@ -557,8 +558,8 @@ export class WorkspacesService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'WORKSPACE_MEMBER_ADD',
-      entityType: 'WORKSPACE_MEMBER',
+      action: AuditAction.WORKSPACE_MEMBER_ADD,
+      entityType: AuditEntityType.WORKSPACE_MEMBER,
       entityId: user.id,
       organizationId: workspace.organizationId,
       workspaceId: workspaceId,
@@ -633,8 +634,8 @@ export class WorkspacesService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'WORKSPACE_MEMBER_ROLE_UPDATE',
-      entityType: 'WORKSPACE_MEMBER',
+      action: AuditAction.WORKSPACE_MEMBER_ROLE_UPDATE,
+      entityType: AuditEntityType.WORKSPACE_MEMBER,
       entityId: memberId,
       organizationId: member.workspace.organizationId,
       workspaceId: workspaceId,
@@ -710,8 +711,8 @@ export class WorkspacesService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'WORKSPACE_MEMBER_REMOVE',
-      entityType: 'WORKSPACE_MEMBER',
+      action: AuditAction.WORKSPACE_MEMBER_REMOVE,
+      entityType: AuditEntityType.WORKSPACE_MEMBER,
       entityId: memberId,
       organizationId: member.workspace.organizationId,
       workspaceId: workspaceId,

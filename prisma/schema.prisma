@@ -47,8 +47,8 @@ model AuditLog {
   organizationId String?
   workspaceId    String?
   userId         String?
-  action         String
-  entityType     String
+  action         AuditAction
+  entityType     AuditEntityType
   entityId       String
   details        Json?
   ipAddress      String?
@@ -348,4 +348,38 @@ enum TaskPriority {
   MEDIUM
   HIGH
   URGENT
+}
+
+enum AuditAction {
+  ORGANIZATION_CREATE
+  ORGANIZATION_UPDATE
+  ORGANIZATION_DELETE
+  ORGANIZATION_MEMBER_REMOVE
+  ORGANIZATION_MEMBER_ROLE_UPDATE
+  WORKSPACE_CREATE
+  WORKSPACE_UPDATE
+  WORKSPACE_DELETE
+  WORKSPACE_MEMBER_ADD
+  WORKSPACE_MEMBER_ROLE_UPDATE
+  WORKSPACE_MEMBER_REMOVE
+  PROJECT_CREATE
+  PROJECT_UPDATE
+  PROJECT_DELETE
+  PROJECT_MEMBER_ADD
+  PROJECT_MEMBER_REMOVE
+  TASK_CREATE
+  TASK_UPDATE
+  TASK_ASSIGN
+}
+
+enum AuditEntityType {
+  ORGANIZATION
+  WORKSPACE
+  PROJECT
+  TASK
+  ORGANIZATION_MEMBER
+  WORKSPACE_MEMBER
+  PROJECT_MEMBER
+  ORGANIZATION_INVITE
+  WORKSPACE_INVITE
 }

@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
 
 export interface CreateAuditLogDto {
   organizationId?: string;
   workspaceId?: string;
   userId?: string;
-  action: string;
-  entityType: string;
+  action: AuditAction;
+  entityType: AuditEntityType;
   entityId: string;
   details?: any;
   ipAddress?: string;
@@ -30,8 +31,8 @@ export class AuditLogsService {
     orgId?: string;
     workspaceId?: string;
     userId?: string;
-    action?: string;
-    entityType?: string;
+    action?: AuditAction;
+    entityType?: AuditEntityType;
     entityId?: string;
     limit?: number;
     offset?: number;

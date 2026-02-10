@@ -11,10 +11,15 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.schema';
 import { UpdateProjectDto } from './dto/update-project.schema';
 import { AddProjectMemberDto } from './dto/add-member.schema';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
+import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async createProject(
     workspaceId: string,
@@ -79,6 +84,18 @@ export class ProjectsService {
           userId,
           role: ProjectRole.OWNER,
         },
+      });
+
+      await this.auditLogsService.createLog({
+        action: AuditAction.PROJECT_CREATE,
+        entityType: AuditEntityType.PROJECT,
+        entityId: project.id,
+        organizationId: workspace.organizationId,
+        workspaceId,
+        userId,
+        details: { name: project.name, nature: project.nature },
+        ipAddress: req.ip as string,
+        userAgent: req.headers['user-agent'] as string,
       });
 
       return {
@@ -182,6 +199,7 @@ export class ProjectsService {
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
       include: {
+        workspace: true,
         members: {
           where: { userId },
           select: { role: true },
@@ -223,6 +241,18 @@ export class ProjectsService {
         nature,
         status,
       },
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.PROJECT_UPDATE,
+      entityType: AuditEntityType.PROJECT,
+      entityId: projectId,
+      organizationId: project.workspace.organizationId,
+      workspaceId: project.workspaceId,
+      userId,
+      details: { name, description, nature, status },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
@@ -303,6 +333,7 @@ export class ProjectsService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -360,6 +391,18 @@ export class ProjectsService {
       where: { id: projectId },
     });
 
+    await this.auditLogsService.createLog({
+      action: AuditAction.PROJECT_DELETE,
+      entityType: AuditEntityType.PROJECT,
+      entityId: projectId,
+      organizationId: project.workspace.organizationId,
+      workspaceId: project.workspaceId,
+      userId,
+      details: { name: project.name },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
     return {
       success: true,
       message: 'Project deleted successfully',
@@ -392,6 +435,7 @@ export class ProjectsService {
             workspaceId: project.workspaceId,
           },
         },
+        include: { workspace: true },
       },
     );
 
@@ -430,6 +474,18 @@ export class ProjectsService {
       },
     });
 
+    await this.auditLogsService.createLog({
+      action: AuditAction.PROJECT_MEMBER_ADD,
+      entityType: AuditEntityType.PROJECT_MEMBER,
+      entityId: targetUserId,
+      organizationId: workspaceMember.workspace.organizationId,
+      workspaceId: project.workspaceId,
+      userId,
+      details: { addedUserId: targetUserId, role },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
     return {
       success: true,
       message: 'Member added to project successfully',
@@ -447,6 +503,7 @@ export class ProjectsService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -497,6 +554,18 @@ export class ProjectsService {
           userId: targetUserId,
         },
       },
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.PROJECT_MEMBER_REMOVE,
+      entityType: AuditEntityType.PROJECT_MEMBER,
+      entityId: targetUserId,
+      organizationId: project.workspace.organizationId,
+      workspaceId: project.workspaceId,
+      userId,
+      details: { removedUserId: targetUserId, role: memberToRemove.role },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {

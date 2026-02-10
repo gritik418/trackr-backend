@@ -12,6 +12,7 @@ import { CreateOrganizationDto } from './dto/create-organization.schema';
 import { UpdateOrganizationDto } from './dto/update-organization.schema';
 import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
+import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
 
 @Injectable()
 export class OrganizationsService {
@@ -69,8 +70,8 @@ export class OrganizationsService {
     };
 
     await this.auditLogsService.createLog({
-      action: 'ORGANIZATION_CREATE',
-      entityType: 'ORGANIZATION',
+      action: AuditAction.ORGANIZATION_CREATE,
+      entityType: AuditEntityType.ORGANIZATION,
       entityId: org.id,
       organizationId: org.id,
       userId: req.user.id,
@@ -216,8 +217,8 @@ export class OrganizationsService {
     };
 
     await this.auditLogsService.createLog({
-      action: 'ORGANIZATION_UPDATE',
-      entityType: 'ORGANIZATION',
+      action: AuditAction.ORGANIZATION_UPDATE,
+      entityType: AuditEntityType.ORGANIZATION,
       entityId: orgId,
       organizationId: orgId,
       userId: req.user.id,
@@ -271,8 +272,8 @@ export class OrganizationsService {
     await this.prismaService.organization.delete({ where: { id: orgId } });
 
     await this.auditLogsService.createLog({
-      action: 'ORGANIZATION_DELETE',
-      entityType: 'ORGANIZATION',
+      action: AuditAction.ORGANIZATION_DELETE,
+      entityType: AuditEntityType.ORGANIZATION,
       entityId: orgId,
       organizationId: orgId,
       userId: req.user.id,
@@ -341,8 +342,8 @@ export class OrganizationsService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'ORGANIZATION_MEMBER_REMOVE',
-      entityType: 'ORGANIZATION_MEMBER',
+      action: AuditAction.ORGANIZATION_MEMBER_REMOVE,
+      entityType: AuditEntityType.ORGANIZATION_MEMBER,
       entityId: memberId,
       organizationId: orgId,
       userId: req.user.id,
@@ -445,8 +446,8 @@ export class OrganizationsService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'ORGANIZATION_MEMBER_ROLE_UPDATE',
-      entityType: 'ORGANIZATION_MEMBER',
+      action: AuditAction.ORGANIZATION_MEMBER_ROLE_UPDATE,
+      entityType: AuditEntityType.ORGANIZATION_MEMBER,
       entityId: memberId,
       organizationId: orgId,
       userId: req.user.id,

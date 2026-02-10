@@ -12,7 +12,7 @@ import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { Request } from 'express';
 import { OrgRoleGuard } from 'src/organizations/guards/org-role/org-role.guard';
 import { OrgRoles } from 'src/organizations/decorators/org-roles.decorator';
-import { OrgRole } from 'generated/prisma/enums';
+import { OrgRole, AuditAction, AuditEntityType } from 'generated/prisma/enums';
 
 @UseGuards(AuthGuard)
 @Controller('audit-logs')
@@ -27,8 +27,8 @@ export class AuditLogsController {
     @Req() req: Request,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
-    @Query('action') action?: string,
-    @Query('entityType') entityType?: string,
+    @Query('action') action?: AuditAction,
+    @Query('entityType') entityType?: AuditEntityType,
     @Query('entityId') entityId?: string,
     @Query('userId') userId?: string,
   ) {
@@ -52,8 +52,8 @@ export class AuditLogsController {
     @Req() req: Request,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
-    @Query('action') action?: string,
-    @Query('entityType') entityType?: string,
+    @Query('action') action?: AuditAction,
+    @Query('entityType') entityType?: AuditEntityType,
     @Query('entityId') entityId?: string,
     @Query('userId') userId?: string,
   ) {

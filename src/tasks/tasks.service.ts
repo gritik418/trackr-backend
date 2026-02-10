@@ -7,6 +7,7 @@ import {
 import { Request } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
+import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
 import { AssignTaskDto } from './dto/assign-task.schema';
 import { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto } from './dto/get-tasks.schema';
@@ -174,8 +175,8 @@ export class TasksService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'TASK_CREATE',
-      entityType: 'TASK',
+      action: AuditAction.TASK_CREATE,
+      entityType: AuditEntityType.TASK,
       entityId: task.id,
       organizationId: project.workspace.organizationId,
       workspaceId,
@@ -428,8 +429,8 @@ export class TasksService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'TASK_UPDATE',
-      entityType: 'TASK',
+      action: AuditAction.TASK_UPDATE,
+      entityType: AuditEntityType.TASK,
       entityId: taskId,
       organizationId: project.workspace.organizationId,
       workspaceId,
@@ -570,8 +571,8 @@ export class TasksService {
     });
 
     await this.auditLogsService.createLog({
-      action: 'TASK_ASSIGN',
-      entityType: 'TASK',
+      action: AuditAction.TASK_ASSIGN,
+      entityType: AuditEntityType.TASK,
       entityId: taskId,
       organizationId: project.workspace.organizationId,
       workspaceId: project.workspaceId,
