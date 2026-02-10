@@ -13,6 +13,7 @@ import { UserModule } from './user/user.module';
 import { CloudinaryModule } from './providers/cloudinary/cloudinary.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ProjectsModule } from './projects/projects.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ProjectsModule } from './projects/projects.module';
     CloudinaryModule,
     TasksModule,
     ProjectsModule,
+    AuditLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
