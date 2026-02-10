@@ -1,18 +1,24 @@
 import {
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Query,
   Req,
   UseGuards,
-  HttpCode,
-  HttpStatus,
+  UsePipes,
 } from '@nestjs/common';
-import { AuditLogsService } from './audit-logs.service';
-import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { Request } from 'express';
-import { OrgRoleGuard } from 'src/organizations/guards/org-role/org-role.guard';
+import { OrgRole } from 'generated/prisma/enums';
+import { AuthGuard } from 'src/common/guards/auth/auth.guard';
+import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
 import { OrgRoles } from 'src/organizations/decorators/org-roles.decorator';
-import { OrgRole, AuditAction, AuditEntityType } from 'generated/prisma/enums';
+import { OrgRoleGuard } from 'src/organizations/guards/org-role/org-role.guard';
+import { AuditLogsService } from './audit-logs.service';
+import {
+  GetAuditLogsDto,
+  getAuditLogsSchema,
+} from './dto/get-audit-logs.schema';
 
 @UseGuards(AuthGuard)
 @Controller('audit-logs')
@@ -23,24 +29,12 @@ export class AuditLogsController {
   @HttpCode(HttpStatus.OK)
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UseGuards(OrgRoleGuard)
-  async getOrgLogs(
-    @Req() req: Request,
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
-    @Query('action') action?: AuditAction,
-    @Query('entityType') entityType?: AuditEntityType,
-    @Query('entityId') entityId?: string,
-    @Query('userId') userId?: string,
-  ) {
+  @UsePipes(new ZodValidationPipe(getAuditLogsSchema))
+  async getOrgLogs(@Req() req: Request, @Query() query: GetAuditLogsDto) {
     const orgId = req.params.orgId as string;
     return this.auditLogsService.getLogs({
       orgId,
-      limit: limit ? parseInt(limit) : 50,
-      offset: offset ? parseInt(offset) : 0,
-      action,
-      entityType,
-      entityId,
-      userId,
+      ...query,
     });
   }
 
@@ -48,26 +42,14 @@ export class AuditLogsController {
   @HttpCode(HttpStatus.OK)
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UseGuards(OrgRoleGuard)
-  async getWorkspaceLogs(
-    @Req() req: Request,
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
-    @Query('action') action?: AuditAction,
-    @Query('entityType') entityType?: AuditEntityType,
-    @Query('entityId') entityId?: string,
-    @Query('userId') userId?: string,
-  ) {
+  @UsePipes(new ZodValidationPipe(getAuditLogsSchema))
+  async getWorkspaceLogs(@Req() req: Request, @Query() query: GetAuditLogsDto) {
     const orgId = req.params.orgId as string;
     const workspaceId = req.params.workspaceId as string;
     return this.auditLogsService.getLogs({
       orgId,
       workspaceId,
-      limit: limit ? parseInt(limit) : 50,
-      offset: offset ? parseInt(offset) : 0,
-      action,
-      entityType,
-      entityId,
-      userId,
+      ...query,
     });
   }
 }
