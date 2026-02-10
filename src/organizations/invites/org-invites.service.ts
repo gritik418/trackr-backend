@@ -377,6 +377,24 @@ export class OrgInvitesService {
         },
       });
 
+      if (validInvite.role === 'ADMIN') {
+        const workspaces = await tx.workspace.findMany({
+          where: { organizationId: orgId },
+          select: { id: true },
+        });
+
+        if (workspaces.length > 0) {
+          await tx.workspaceMember.createMany({
+            data: workspaces.map((workspace) => ({
+              userId,
+              workspaceId: workspace.id,
+              role: 'ADMIN',
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
       return {
         success: true,
         message: 'Successfully joined the organization',

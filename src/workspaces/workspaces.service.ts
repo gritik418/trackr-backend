@@ -17,6 +17,23 @@ import { sanitizeUser } from 'src/common/utils/sanitize-user';
 export class WorkspacesService {
   constructor(private readonly prismaService: PrismaService) {}
 
+  private async isOrgAdminOrOwner(
+    orgId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const orgMember = await this.prismaService.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId: orgId,
+        },
+      },
+      select: { role: true },
+    });
+
+    return !!orgMember && ['OWNER', 'ADMIN'].includes(orgMember.role);
+  }
+
   async createWorkspace(orgId: string, data: CreateWorkspaceDto, req: Request) {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
     const { name, slug, description, iconUrl } = data;
@@ -100,6 +117,44 @@ export class WorkspacesService {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
     if (!orgId) throw new BadRequestException('Organization ID is required.');
 
+    const orgMember = await this.prismaService.organizationMember.findFirst({
+      where: {
+        organizationId: orgId,
+        userId: req.user.id,
+      },
+    });
+
+    if (!orgMember)
+      throw new UnauthorizedException('Not a member of this organization.');
+
+    const userOrgRole = orgMember.role;
+
+    if (userOrgRole === 'OWNER' || userOrgRole === 'ADMIN') {
+      const workspaces = await this.prismaService.workspace.findMany({
+        where: {
+          organizationId: orgId,
+        },
+        include: {
+          owner: true,
+          members: true,
+          projects: { select: { name: true } },
+        },
+      });
+      const sanitizedWorkspaces = workspaces.map((w) => {
+        const user = w.members.find((member) => member.userId === req.user?.id);
+        return {
+          ...w,
+          role: user?.role,
+          owner: sanitizeUser(w.owner),
+        };
+      });
+
+      return {
+        success: true,
+        message: 'Workspaces retrieved successfully.',
+        workspaces: sanitizedWorkspaces,
+      };
+    }
     const workspaces = await this.prismaService.workspace.findMany({
       where: {
         organizationId: orgId,
@@ -108,6 +163,7 @@ export class WorkspacesService {
       include: {
         owner: true,
         members: true,
+        projects: { select: { name: true } },
       },
     });
     const sanitizedWorkspaces = workspaces.map((w) => {
@@ -132,11 +188,13 @@ export class WorkspacesService {
     if (!workspaceId)
       throw new BadRequestException('Workspace ID is required.');
 
+    const isOrgAdmin = await this.isOrgAdminOrOwner(orgId, req.user.id);
+
     const workspace = await this.prismaService.workspace.findUnique({
       where: {
         id: workspaceId,
         organizationId: orgId,
-        members: { some: { userId: req.user.id } },
+        ...(!isOrgAdmin && { members: { some: { userId: req.user.id } } }),
       },
       include: {
         owner: true,
@@ -165,17 +223,35 @@ export class WorkspacesService {
     const workspace = await this.prismaService.workspace.findUnique({
       where: {
         slug,
-        members: { some: { userId: req.user.id } },
       },
       include: {
         owner: true,
         members: true,
-        organization: true,
-        projects: true,
+        organization: {
+          include: {
+            members: {
+              where: { userId: req.user.id },
+              select: { role: true },
+            },
+          },
+        },
+        projects: { select: { name: true } },
       },
     });
 
     if (!workspace) throw new NotFoundException('Workspace not found.');
+
+    const isOrgAdmin =
+      workspace.organization.members.length > 0 &&
+      ['OWNER', 'ADMIN'].includes(workspace.organization.members[0].role);
+
+    const isWorkspaceMember = workspace.members.some(
+      (m) => m.userId === req.user?.id,
+    );
+
+    if (!isOrgAdmin && !isWorkspaceMember) {
+      throw new NotFoundException('Workspace not found.');
+    }
 
     const sanitizedWorkspace = {
       ...workspace,
@@ -197,7 +273,6 @@ export class WorkspacesService {
     const workspace = await this.prismaService.workspace.findUnique({
       where: {
         id: workspaceId,
-        members: { some: { userId: req.user.id } },
       },
       include: {
         members: {
@@ -205,10 +280,30 @@ export class WorkspacesService {
             user: true,
           },
         },
+        organization: {
+          include: {
+            members: {
+              where: { userId: req.user.id },
+              select: { role: true },
+            },
+          },
+        },
       },
     });
 
     if (!workspace) throw new NotFoundException('Workspace not found.');
+
+    const isOrgAdmin =
+      workspace.organization.members.length > 0 &&
+      ['OWNER', 'ADMIN'].includes(workspace.organization.members[0].role);
+
+    const isWorkspaceMember = workspace.members.some(
+      (m) => m.userId === req.user?.id,
+    );
+
+    if (!isOrgAdmin && !isWorkspaceMember) {
+      throw new NotFoundException('Workspace not found.');
+    }
 
     const sanitizedMembers = workspace.members.map((m) => ({
       ...m,
@@ -241,10 +336,15 @@ export class WorkspacesService {
 
     if (!workspace) throw new NotFoundException('Workspace not found.');
 
+    const isOrgAdmin = await this.isOrgAdminOrOwner(
+      workspace.organizationId,
+      req.user.id,
+    );
+
     const userRole = workspace.members[0]?.role;
-    if (!userRole || !['OWNER', 'ADMIN'].includes(userRole)) {
+    if (!isOrgAdmin && (!userRole || !['OWNER', 'ADMIN'].includes(userRole))) {
       throw new UnauthorizedException(
-        'Only workspace owner/admin can update workspace.',
+        'Only workspace owner/admin or organization owner/admin can update workspace.',
       );
     }
 
@@ -310,10 +410,15 @@ export class WorkspacesService {
 
     if (!workspace) throw new NotFoundException('Workspace not found.');
 
+    const isOrgAdmin = await this.isOrgAdminOrOwner(
+      workspace.organizationId,
+      req.user.id,
+    );
+
     const userRole = workspace.members[0]?.role;
-    if (userRole !== 'OWNER' && userRole !== 'ADMIN') {
+    if (!isOrgAdmin && userRole !== 'OWNER' && userRole !== 'ADMIN') {
       throw new UnauthorizedException(
-        'Only the workspace owner/admin can delete the workspace.',
+        'Only the workspace owner/admin or organization owner/admin can delete the workspace.',
       );
     }
 
@@ -356,6 +461,30 @@ export class WorkspacesService {
         },
       },
     });
+
+    const isRequesterOrgAdmin = await this.isOrgAdminOrOwner(
+      workspace.organizationId,
+      req.user.id,
+    );
+
+    if (!isRequesterOrgAdmin) {
+      const requesterWorkspaceMember =
+        await this.prismaService.workspaceMember.findUnique({
+          where: {
+            userId_workspaceId: { userId: req.user.id, workspaceId },
+          },
+          select: { role: true },
+        });
+
+      if (
+        !requesterWorkspaceMember ||
+        !['OWNER', 'ADMIN'].includes(requesterWorkspaceMember.role)
+      ) {
+        throw new UnauthorizedException(
+          'Only workspace owner/admin or organization owner/admin can add members.',
+        );
+      }
+    }
 
     if (!orgMember) {
       throw new BadRequestException(
@@ -404,10 +533,35 @@ export class WorkspacesService {
 
     const member = await this.prismaService.workspaceMember.findUnique({
       where: { id: memberId },
+      include: { workspace: true },
     });
 
     if (!member || member.workspaceId !== workspaceId) {
       throw new NotFoundException('Workspace member not found.');
+    }
+
+    const isRequesterOrgAdmin = await this.isOrgAdminOrOwner(
+      member.workspace.organizationId,
+      req.user.id,
+    );
+
+    if (!isRequesterOrgAdmin) {
+      const requesterWorkspaceMember =
+        await this.prismaService.workspaceMember.findUnique({
+          where: {
+            userId_workspaceId: { userId: req.user.id, workspaceId },
+          },
+          select: { role: true },
+        });
+
+      if (
+        !requesterWorkspaceMember ||
+        !['OWNER', 'ADMIN'].includes(requesterWorkspaceMember.role)
+      ) {
+        throw new UnauthorizedException(
+          'Only workspace owner/admin or organization owner/admin can update member roles.',
+        );
+      }
     }
 
     if (member.role === 'OWNER' && role !== 'OWNER') {
@@ -441,10 +595,35 @@ export class WorkspacesService {
 
     const member = await this.prismaService.workspaceMember.findUnique({
       where: { id: memberId },
+      include: { workspace: true },
     });
 
     if (!member || member.workspaceId !== workspaceId) {
       throw new NotFoundException('Workspace member not found.');
+    }
+
+    const isRequesterOrgAdmin = await this.isOrgAdminOrOwner(
+      member.workspace.organizationId,
+      req.user.id,
+    );
+
+    if (!isRequesterOrgAdmin) {
+      const requesterWorkspaceMember =
+        await this.prismaService.workspaceMember.findUnique({
+          where: {
+            userId_workspaceId: { userId: req.user.id, workspaceId },
+          },
+          select: { role: true },
+        });
+
+      if (
+        !requesterWorkspaceMember ||
+        !['OWNER', 'ADMIN'].includes(requesterWorkspaceMember.role)
+      ) {
+        throw new UnauthorizedException(
+          'Only workspace owner/admin or organization owner/admin can remove members.',
+        );
+      }
     }
 
     if (member.role === 'OWNER') {
