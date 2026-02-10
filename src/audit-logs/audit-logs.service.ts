@@ -35,7 +35,7 @@ export class AuditLogsService {
     entityType?: AuditEntityType;
     entityId?: string;
     limit?: number;
-    offset?: number;
+    page?: number;
   }) {
     const {
       orgId,
@@ -45,8 +45,10 @@ export class AuditLogsService {
       entityType,
       entityId,
       limit = 50,
-      offset = 0,
+      page = 1,
     } = params;
+
+    const skip = (page - 1) * limit;
 
     const where: any = {};
     if (orgId) where.organizationId = orgId;
@@ -60,7 +62,7 @@ export class AuditLogsService {
       this.prismaService.auditLog.findMany({
         where,
         take: limit,
-        skip: offset,
+        skip,
         orderBy: { createdAt: 'desc' },
         include: {
           user: {
@@ -81,7 +83,7 @@ export class AuditLogsService {
       logs,
       total,
       limit,
-      offset,
+      page,
     };
   }
 }
