@@ -10,6 +10,7 @@ import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrganizationDto } from './dto/create-organization.schema';
 import { UpdateOrganizationDto } from './dto/update-organization.schema';
+import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 
 @Injectable()
 export class OrganizationsService {
@@ -304,6 +305,99 @@ export class OrganizationsService {
     return {
       success: true,
       message: 'Member removed successfully.',
+    };
+  }
+
+  async updateMemberRole(
+    orgId: string,
+    memberId: string,
+    data: UpdateMemberRoleDto,
+    req: Request,
+  ) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    const { role } = data;
+
+    const member = await this.prismaService.organizationMember.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!member || member.organizationId !== orgId) {
+      throw new NotFoundException('Member not found in this organization.');
+    }
+
+    const requester = await this.prismaService.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: req.user.id,
+          organizationId: orgId,
+        },
+      },
+    });
+
+    if (!requester) {
+      throw new ForbiddenException(
+        'You are not a member of this organization.',
+      );
+    }
+
+    if (member.role === 'OWNER') {
+      throw new ForbiddenException(
+        'Organization owner role cannot be changed.',
+      );
+    }
+
+    if (
+      requester.role === 'ADMIN' &&
+      (member.role === 'ADMIN' || role === 'OWNER')
+    ) {
+      throw new ForbiddenException(
+        'Admins cannot change roles of other admins or promote to owner.',
+      );
+    }
+
+    if (requester.role !== 'OWNER' && requester.role !== 'ADMIN') {
+      throw new ForbiddenException(
+        'Only admins/owners can change member roles.',
+      );
+    }
+
+    await this.prismaService.$transaction(async (tx) => {
+      await tx.organizationMember.update({
+        where: { id: memberId },
+        data: { role },
+      });
+
+      if (role === 'ADMIN') {
+        const workspaces = await tx.workspace.findMany({
+          where: { organizationId: orgId },
+          select: { id: true },
+        });
+
+        if (workspaces.length > 0) {
+          await tx.workspaceMember.createMany({
+            data: workspaces.map((workspace) => ({
+              userId: member.userId,
+              workspaceId: workspace.id,
+              role: 'ADMIN',
+            })),
+            skipDuplicates: true,
+          });
+        }
+      } else if (member.role === 'ADMIN' && role === 'MEMBER') {
+        await tx.workspaceMember.deleteMany({
+          where: {
+            userId: member.userId,
+            workspace: {
+              organizationId: orgId,
+            },
+          },
+        });
+      }
+    });
+
+    return {
+      success: true,
+      message: 'Member role updated successfully.',
     };
   }
 }

@@ -25,6 +25,9 @@ import updateOrganizationSchema, {
 import { OrgRoleGuard } from './guards/org-role/org-role.guard';
 import { OrgRoles } from './decorators/org-roles.decorator';
 import { OrgRole } from 'generated/prisma/enums';
+import updateMemberRoleSchema, {
+  UpdateMemberRoleDto,
+} from './dto/update-member-role.schema';
 
 @UseGuards(AuthGuard)
 @Controller('organizations')
@@ -91,6 +94,7 @@ export class OrganizationsController {
   deleteOrganization(@Param('orgId') orgId: string, @Req() req: Request) {
     return this.orgrganizationService.deleteOrganization(orgId, req);
   }
+
   @Delete('/:orgId/members/:memberId')
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UseGuards(OrgRoleGuard)
@@ -101,5 +105,24 @@ export class OrganizationsController {
     @Req() req: Request,
   ) {
     return this.orgrganizationService.removeMember(orgId, memberId, req);
+  }
+
+  @Patch('/:orgId/members/:memberId/role')
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
+  @UseGuards(OrgRoleGuard)
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(updateMemberRoleSchema))
+  updateMemberRole(
+    @Param('orgId') orgId: string,
+    @Param('memberId') memberId: string,
+    @Body() data: UpdateMemberRoleDto,
+    @Req() req: Request,
+  ) {
+    return this.orgrganizationService.updateMemberRole(
+      orgId,
+      memberId,
+      data,
+      req,
+    );
   }
 }
