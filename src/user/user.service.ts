@@ -29,32 +29,11 @@ export class UserService {
         id: req.user.id,
         isVerified: true,
       },
-      include: {
-        workspaces: {
-          include: { members: { where: { user: { id: req.user.id } } } },
-        },
-        organizations: {
-          include: { members: { where: { user: { id: req.user.id } } } },
-        },
-      },
     });
 
     if (!user) throw new NotFoundException('User not found.');
-    const workspaces = user.workspaces.map((ws) => {
-      return {
-        ...ws,
-        role: ws.members[0].role,
-      };
-    });
 
-    const organizations = user.organizations.map((org) => {
-      return {
-        ...org,
-        role: org.members[0].role,
-      };
-    });
-
-    const sanitizedUser = { ...sanitizeUser(user), workspaces, organizations };
+    const sanitizedUser = sanitizeUser(user);
 
     return {
       success: true,
