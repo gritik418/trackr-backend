@@ -13,7 +13,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
 import { ConfigService } from '@nestjs/config';
-import { InviteStatus } from 'generated/prisma/enums';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
+import {
+  InviteStatus,
+  AuditAction,
+  AuditEntityType,
+} from 'generated/prisma/enums';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { ORG_INVITE_EXPIRY_MS } from 'src/common/constants/expiration.constants';
 import { OrganizationInvite } from 'generated/prisma/browser';
@@ -25,6 +30,7 @@ export class OrgInvitesService {
     private readonly hashingService: HashingService,
     private readonly emailProducer: EmailProducer,
     private readonly configService: ConfigService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
 
   async sendOrgInvite(orgId: string, data: SendOrgInviteDto, req: Request) {
@@ -94,7 +100,7 @@ export class OrgInvitesService {
     const token = uuidv4();
     const hashedToken = await this.hashingService.hashValue(token, 8);
 
-    await this.prismaService.organizationInvite.create({
+    const invite = await this.prismaService.organizationInvite.create({
       data: {
         email,
         role,
@@ -118,6 +124,17 @@ export class OrgInvitesService {
       inviterName: inviter.name,
       inviterEmail: inviter.email,
       inviteLink,
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.ORGANIZATION_INVITE_SEND,
+      entityType: AuditEntityType.ORGANIZATION_INVITE,
+      entityId: invite.id,
+      organizationId: orgId,
+      userId,
+      details: { email, role },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
@@ -208,6 +225,17 @@ export class OrgInvitesService {
       data: {
         status: 'REVOKED',
       },
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.ORGANIZATION_INVITE_REVOKE,
+      entityType: AuditEntityType.ORGANIZATION_INVITE,
+      entityId: inviteId,
+      organizationId: orgId,
+      userId,
+      details: { email: invite.email },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
@@ -372,9 +400,19 @@ export class OrgInvitesService {
       await tx.organizationInvite.update({
         where: { id: validInvite.id },
         data: {
-          status: InviteStatus.ACCEPTED,
           acceptedAt: new Date(),
         },
+      });
+
+      await this.auditLogsService.createLog({
+        action: AuditAction.ORGANIZATION_INVITE_ACCEPT,
+        entityType: AuditEntityType.ORGANIZATION_INVITE,
+        entityId: validInvite.id,
+        organizationId: orgId,
+        userId,
+        details: { email: validInvite.email, role: validInvite.role },
+        ipAddress: req.ip as string,
+        userAgent: req.headers['user-agent'] as string,
       });
 
       if (validInvite.role === 'ADMIN') {
@@ -447,6 +485,17 @@ export class OrgInvitesService {
       data: {
         status: InviteStatus.REJECTED,
       },
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.ORGANIZATION_INVITE_REJECT,
+      entityType: AuditEntityType.ORGANIZATION_INVITE,
+      entityId: validInvite.id,
+      organizationId: orgId,
+      userId,
+      details: { email: validInvite.email },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {

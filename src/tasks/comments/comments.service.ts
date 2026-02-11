@@ -9,10 +9,15 @@ import { ProjectNature, ProjectRole } from 'generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateCommentDto } from './dto/create-comment.schema';
 import { UpdateCommentDto } from './dto/update-comment.schema';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
+import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
 
 @Injectable()
 export class CommentsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async createComment(taskId: string, data: CreateCommentDto, req: Request) {
     const userId = req.user?.id;
@@ -33,6 +38,7 @@ export class CommentsService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -87,11 +93,25 @@ export class CommentsService {
       },
     });
 
-    return {
+    const response = {
       success: true,
       message: 'Comment added successfully',
       comment,
     };
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.TASK_COMMENT_CREATE,
+      entityType: AuditEntityType.COMMENT,
+      entityId: comment.id,
+      organizationId: project.workspace.organizationId,
+      workspaceId: project.workspaceId,
+      userId,
+      details: { taskId, content: data.content },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
+    return response;
   }
 
   async getComments(taskId: string, req: Request) {
@@ -112,6 +132,7 @@ export class CommentsService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -216,11 +237,30 @@ export class CommentsService {
       },
     });
 
-    return {
+    const response = {
       success: true,
       message: 'Comment updated successfully',
       comment: updatedComment,
     };
+
+    const task = await this.prismaService.task.findUnique({
+      where: { id: taskId },
+      include: { project: { include: { workspace: true } } },
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.TASK_COMMENT_UPDATE,
+      entityType: AuditEntityType.COMMENT,
+      entityId: commentId,
+      organizationId: task?.project?.workspace?.organizationId,
+      workspaceId: task?.project?.workspaceId,
+      userId,
+      details: { taskId, content: data.content },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
+    return response;
   }
 
   async deleteComment(taskId: string, commentId: string, req: Request) {
@@ -241,6 +281,7 @@ export class CommentsService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -284,9 +325,23 @@ export class CommentsService {
       where: { id: commentId },
     });
 
-    return {
+    const response = {
       success: true,
       message: 'Comment deleted successfully',
     };
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.TASK_COMMENT_DELETE,
+      entityType: AuditEntityType.COMMENT,
+      entityId: commentId,
+      organizationId: project.workspace.organizationId,
+      workspaceId: project.workspaceId,
+      userId,
+      details: { taskId },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
+    return response;
   }
 }

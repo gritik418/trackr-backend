@@ -12,7 +12,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { HashingService } from 'src/common/hashing/hashing.service';
 import { EmailProducer } from 'src/queues/email/email.producer';
 import { ConfigService } from '@nestjs/config';
-import { InviteStatus } from 'generated/prisma/enums';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
+import {
+  AuditAction,
+  AuditEntityType,
+  InviteStatus,
+} from 'generated/prisma/enums';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { WORKSPACE_INVITE_EXPIRY_MS } from 'src/common/constants/expiration.constants';
 
@@ -23,6 +28,7 @@ export class WorkspaceInvitesService {
     private readonly hashingService: HashingService,
     private readonly emailProducer: EmailProducer,
     private readonly configService: ConfigService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
 
   async sendWorkspaceInvite(
@@ -95,7 +101,7 @@ export class WorkspaceInvitesService {
     const token = uuidv4();
     const hashedToken = await this.hashingService.hashValue(token, 8);
 
-    await this.prismaService.workspaceInvite.create({
+    const invite = await this.prismaService.workspaceInvite.create({
       data: {
         email,
         role,
@@ -119,6 +125,23 @@ export class WorkspaceInvitesService {
       inviterName: inviter.name,
       inviterEmail: inviter.email,
       inviteLink,
+    });
+
+    const workspaceFull = await this.prismaService.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { organizationId: true },
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.WORKSPACE_INVITE_SEND,
+      entityType: AuditEntityType.WORKSPACE_INVITE,
+      entityId: invite.id,
+      organizationId: workspaceFull?.organizationId,
+      workspaceId,
+      userId,
+      details: { email, role },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
@@ -206,6 +229,17 @@ export class WorkspaceInvitesService {
       data: {
         status: 'REVOKED',
       },
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.WORKSPACE_INVITE_REVOKE,
+      entityType: AuditEntityType.WORKSPACE_INVITE,
+      entityId: inviteId,
+      workspaceId,
+      userId,
+      details: { email: invite.email },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
@@ -373,9 +407,19 @@ export class WorkspaceInvitesService {
       await tx.workspaceInvite.update({
         where: { id: validInvite.id },
         data: {
-          status: InviteStatus.ACCEPTED,
           acceptedAt: new Date(),
         },
+      });
+
+      await this.auditLogsService.createLog({
+        action: AuditAction.WORKSPACE_INVITE_ACCEPT,
+        entityType: AuditEntityType.WORKSPACE_INVITE,
+        entityId: validInvite.id,
+        workspaceId,
+        userId,
+        details: { email: validInvite.email, role: validInvite.role },
+        ipAddress: req.ip as string,
+        userAgent: req.headers['user-agent'] as string,
       });
 
       return {
@@ -532,6 +576,17 @@ export class WorkspaceInvitesService {
       data: {
         status: InviteStatus.REJECTED,
       },
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.WORKSPACE_INVITE_REJECT,
+      entityType: AuditEntityType.WORKSPACE_INVITE,
+      entityId: validInvite.id,
+      workspaceId,
+      userId,
+      details: { email: validInvite.email },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
     });
 
     return {
