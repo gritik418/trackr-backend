@@ -25,6 +25,20 @@ export class TasksService {
     private readonly auditLogsService: AuditLogsService,
   ) {}
 
+  private async isOrgAdmin(orgId: string, userId: string): Promise<boolean> {
+    const orgMember = await this.prismaService.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId: orgId,
+        },
+      },
+      select: { role: true },
+    });
+
+    return !!orgMember && ['OWNER', 'ADMIN'].includes(orgMember.role);
+  }
+
   async createTask(projectId: string, data: CreateTaskDto, req: Request) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
@@ -52,6 +66,11 @@ export class TasksService {
 
     const workspaceId = project.workspaceId;
 
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
+
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
       {
         where: {
@@ -63,47 +82,53 @@ export class TasksService {
       },
     );
 
-    if (!workspaceMember) {
+    if (!workspaceMember && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    if (project.nature === ProjectNature.PRIVATE) {
-      const projectMember = await this.prismaService.projectMember.findUnique({
-        where: {
-          projectId_userId: {
-            projectId,
-            userId,
+    if (!isOrgAdmin) {
+      if (project.nature === ProjectNature.PRIVATE) {
+        const projectMember = await this.prismaService.projectMember.findUnique(
+          {
+            where: {
+              projectId_userId: {
+                projectId,
+                userId,
+              },
+            },
           },
-        },
-      });
-
-      if (!projectMember) {
-        throw new UnauthorizedException(
-          'You are not authorized to create tasks in this project',
         );
-      }
-    }
 
-    if (project.nature === ProjectNature.PUBLIC) {
-      if (workspaceMember.role === WorkspaceRole.MEMBER) {
-        throw new UnauthorizedException(
-          'Only workspace admins and owners can create tasks in public projects',
-        );
+        if (!projectMember) {
+          throw new UnauthorizedException(
+            'You are not authorized to create tasks in this project',
+          );
+        }
       }
-    } else {
-      const projectMember = await this.prismaService.projectMember.findUnique({
-        where: {
-          projectId_userId: {
-            projectId,
-            userId,
+
+      if (project.nature === ProjectNature.PUBLIC) {
+        if (workspaceMember!.role === WorkspaceRole.MEMBER) {
+          throw new UnauthorizedException(
+            'Only workspace admins and owners can create tasks in public projects',
+          );
+        }
+      } else {
+        const projectMember = await this.prismaService.projectMember.findUnique(
+          {
+            where: {
+              projectId_userId: {
+                projectId,
+                userId,
+              },
+            },
           },
-        },
-      });
-
-      if (!projectMember || projectMember.role === ProjectRole.MEMBER) {
-        throw new UnauthorizedException(
-          'You are not authorized to create tasks in this project',
         );
+
+        if (!projectMember || projectMember.role === ProjectRole.MEMBER) {
+          throw new UnauthorizedException(
+            'You are not authorized to create tasks in this project',
+          );
+        }
       }
     }
 
@@ -205,6 +230,7 @@ export class TasksService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -212,6 +238,11 @@ export class TasksService {
     }
 
     const workspaceId = project.workspaceId;
+
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
 
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
       {
@@ -224,11 +255,11 @@ export class TasksService {
       },
     );
 
-    if (!workspaceMember) {
+    if (!workspaceMember && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    if (project.nature === ProjectNature.PRIVATE) {
+    if (!isOrgAdmin && project.nature === ProjectNature.PRIVATE) {
       const projectMember = await this.prismaService.projectMember.findUnique({
         where: {
           projectId_userId: {
@@ -326,6 +357,11 @@ export class TasksService {
 
     const workspaceId = project.workspaceId;
 
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
+
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
       {
         where: {
@@ -337,30 +373,34 @@ export class TasksService {
       },
     );
 
-    if (!workspaceMember) {
+    if (!workspaceMember && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    if (project.nature === ProjectNature.PUBLIC) {
-      if (workspaceMember.role === WorkspaceRole.MEMBER) {
-        throw new UnauthorizedException(
-          'Only workspace admins and owners can update tasks in public projects',
-        );
-      }
-    } else {
-      const projectMember = await this.prismaService.projectMember.findUnique({
-        where: {
-          projectId_userId: {
-            projectId,
-            userId,
+    if (!isOrgAdmin) {
+      if (project.nature === ProjectNature.PUBLIC) {
+        if (workspaceMember!.role === WorkspaceRole.MEMBER) {
+          throw new UnauthorizedException(
+            'Only workspace admins and owners can update tasks in public projects',
+          );
+        }
+      } else {
+        const projectMember = await this.prismaService.projectMember.findUnique(
+          {
+            where: {
+              projectId_userId: {
+                projectId,
+                userId,
+              },
+            },
           },
-        },
-      });
-
-      if (!projectMember) {
-        throw new UnauthorizedException(
-          'You are not authorized to update tasks in this project',
         );
+
+        if (!projectMember) {
+          throw new UnauthorizedException(
+            'You are not authorized to update tasks in this project',
+          );
+        }
       }
     }
 
@@ -479,6 +519,11 @@ export class TasksService {
       throw new BadRequestException('Task does not belong to this project');
     }
 
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
+
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
       {
         where: {
@@ -490,62 +535,66 @@ export class TasksService {
       },
     );
 
-    if (!workspaceMember) {
+    if (!workspaceMember && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    if (project.nature === ProjectNature.PUBLIC) {
-      if (workspaceMember.role === WorkspaceRole.MEMBER) {
-        throw new UnauthorizedException(
-          'Only workspace admins and owners can assign tasks in public projects',
-        );
-      }
+    if (!isOrgAdmin) {
+      if (project.nature === ProjectNature.PUBLIC) {
+        if (workspaceMember!.role === WorkspaceRole.MEMBER) {
+          throw new UnauthorizedException(
+            'Only workspace admins and owners can assign tasks in public projects',
+          );
+        }
 
-      const assigneeMember =
-        await this.prismaService.workspaceMember.findUnique({
-          where: {
-            userId_workspaceId: {
-              userId: assigneeId,
-              workspaceId: project.workspaceId,
+        const assigneeMember =
+          await this.prismaService.workspaceMember.findUnique({
+            where: {
+              userId_workspaceId: {
+                userId: assigneeId,
+                workspaceId: project.workspaceId,
+              },
+            },
+          });
+
+        if (!assigneeMember) {
+          throw new BadRequestException(
+            'Assignee is not a member of this workspace',
+          );
+        }
+      } else {
+        const projectMember = await this.prismaService.projectMember.findUnique(
+          {
+            where: {
+              projectId_userId: {
+                projectId,
+                userId,
+              },
             },
           },
-        });
-
-      if (!assigneeMember) {
-        throw new BadRequestException(
-          'Assignee is not a member of this workspace',
         );
-      }
-    } else {
-      const projectMember = await this.prismaService.projectMember.findUnique({
-        where: {
-          projectId_userId: {
-            projectId,
-            userId,
-          },
-        },
-      });
 
-      if (!projectMember) {
-        throw new UnauthorizedException(
-          'You are not authorized to assign tasks in this project',
-        );
-      }
+        if (!projectMember) {
+          throw new UnauthorizedException(
+            'You are not authorized to assign tasks in this project',
+          );
+        }
 
-      const assigneeProjectMember =
-        await this.prismaService.projectMember.findUnique({
-          where: {
-            projectId_userId: {
-              projectId,
-              userId: assigneeId,
+        const assigneeProjectMember =
+          await this.prismaService.projectMember.findUnique({
+            where: {
+              projectId_userId: {
+                projectId,
+                userId: assigneeId,
+              },
             },
-          },
-        });
+          });
 
-      if (!assigneeProjectMember) {
-        throw new BadRequestException(
-          'Assignee is not a member of this project',
-        );
+        if (!assigneeProjectMember) {
+          throw new BadRequestException(
+            'Assignee is not a member of this project',
+          );
+        }
       }
     }
 
@@ -597,6 +646,7 @@ export class TasksService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
@@ -604,6 +654,11 @@ export class TasksService {
     }
 
     const workspaceId = project.workspaceId;
+
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
 
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
       {
@@ -616,11 +671,11 @@ export class TasksService {
       },
     );
 
-    if (!workspaceMember) {
+    if (!workspaceMember && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    if (project.nature === ProjectNature.PRIVATE) {
+    if (!isOrgAdmin && project.nature === ProjectNature.PRIVATE) {
       const projectMember = await this.prismaService.projectMember.findUnique({
         where: {
           projectId_userId: {
@@ -679,6 +734,56 @@ export class TasksService {
 
     const task = await this.prismaService.task.findUnique({
       where: { id: taskId },
+      include: { project: { include: { workspace: true } } },
+    });
+
+    if (!task || !task.project) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (task.projectId !== projectId) {
+      throw new BadRequestException('Task does not belong to this project');
+    }
+
+    const isOrgAdmin = await this.isOrgAdmin(
+      task.project.workspace.organizationId,
+      userId,
+    );
+
+    const workspaceMember = await this.prismaService.workspaceMember.findUnique(
+      {
+        where: {
+          userId_workspaceId: {
+            userId,
+            workspaceId: task.project.workspaceId,
+          },
+        },
+      },
+    );
+
+    if (!workspaceMember && !isOrgAdmin) {
+      throw new UnauthorizedException('You are not a member of this workspace');
+    }
+
+    if (!isOrgAdmin && task.project.nature === ProjectNature.PRIVATE) {
+      const projectMember = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+
+      if (!projectMember) {
+        throw new UnauthorizedException(
+          'You are not authorized to view tasks in this project',
+        );
+      }
+    }
+
+    const taskWithDetails = await this.prismaService.task.findUnique({
+      where: { id: taskId },
       include: {
         assignees: {
           select: {
@@ -693,18 +798,10 @@ export class TasksService {
       },
     });
 
-    if (!task) {
-      throw new NotFoundException('Task not found');
-    }
-
-    if (task.projectId !== projectId) {
-      throw new BadRequestException('Task does not belong to this project');
-    }
-
     return {
       success: true,
       message: 'Task fetched successfully',
-      task,
+      task: taskWithDetails,
     };
   }
 }
