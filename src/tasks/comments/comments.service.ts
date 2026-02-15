@@ -19,6 +19,20 @@ export class CommentsService {
     private readonly auditLogsService: AuditLogsService,
   ) {}
 
+  private async isOrgAdmin(orgId: string, userId: string): Promise<boolean> {
+    const orgMember = await this.prismaService.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId: orgId,
+        },
+      },
+      select: { role: true },
+    });
+
+    return !!orgMember && ['OWNER', 'ADMIN'].includes(orgMember.role);
+  }
+
   async createComment(taskId: string, data: CreateCommentDto, req: Request) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
@@ -45,6 +59,11 @@ export class CommentsService {
       throw new NotFoundException('Project not found');
     }
 
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
+
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
       {
         where: {
@@ -56,11 +75,11 @@ export class CommentsService {
       },
     );
 
-    if (!workspaceMember) {
+    if (!workspaceMember && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    if (project.nature === ProjectNature.PRIVATE) {
+    if (!isOrgAdmin && project.nature === ProjectNature.PRIVATE) {
       const projectMember = await this.prismaService.projectMember.findUnique({
         where: {
           projectId_userId: {
@@ -139,6 +158,11 @@ export class CommentsService {
       throw new NotFoundException('Project not found');
     }
 
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
+
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
       {
         where: {
@@ -150,11 +174,11 @@ export class CommentsService {
       },
     );
 
-    if (!workspaceMember) {
+    if (!workspaceMember && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    if (project.nature === ProjectNature.PRIVATE) {
+    if (!isOrgAdmin && project.nature === ProjectNature.PRIVATE) {
       const projectMember = await this.prismaService.projectMember.findUnique({
         where: {
           projectId_userId: {
@@ -212,7 +236,16 @@ export class CommentsService {
       throw new NotFoundException('Comment not found');
     }
 
-    if (comment.userId !== userId) {
+    const task = await this.prismaService.task.findUnique({
+      where: { id: taskId },
+      include: { project: { include: { workspace: true } } },
+    });
+
+    const isOrgAdmin = task?.project?.workspace?.organizationId
+      ? await this.isOrgAdmin(task.project.workspace.organizationId, userId)
+      : false;
+
+    if (comment.userId !== userId && !isOrgAdmin) {
       throw new UnauthorizedException('You can only update your own comments');
     }
 
@@ -242,11 +275,6 @@ export class CommentsService {
       message: 'Comment updated successfully',
       comment: updatedComment,
     };
-
-    const task = await this.prismaService.task.findUnique({
-      where: { id: taskId },
-      include: { project: { include: { workspace: true } } },
-    });
 
     await this.auditLogsService.createLog({
       action: AuditAction.TASK_COMMENT_UPDATE,
@@ -315,7 +343,12 @@ export class CommentsService {
       (projectMember.role === ProjectRole.OWNER ||
         projectMember.role === ProjectRole.ADMIN);
 
-    if (!isAuthor && !isModerator) {
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
+
+    if (comment.userId !== userId && !isOrgAdmin) {
       throw new UnauthorizedException(
         'You are not authorized to delete this comment',
       );
