@@ -428,7 +428,7 @@ export class WorkspacesService {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
 
     const workspace = await this.prismaService.workspace.findUnique({
-      where: { id: workspaceId, members: { some: { userId: req.user.id } } },
+      where: { id: workspaceId },
       include: {
         members: {
           where: { userId: req.user.id },
