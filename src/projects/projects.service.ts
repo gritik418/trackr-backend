@@ -21,6 +21,20 @@ export class ProjectsService {
     private readonly auditLogsService: AuditLogsService,
   ) {}
 
+  private async isOrgAdmin(orgId: string, userId: string): Promise<boolean> {
+    const orgMember = await this.prismaService.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId: orgId,
+        },
+      },
+      select: { role: true },
+    });
+
+    return !!orgMember && ['OWNER', 'ADMIN'].includes(orgMember.role);
+  }
+
   async createProject(
     workspaceId: string,
     data: CreateProjectDto,
@@ -30,14 +44,14 @@ export class ProjectsService {
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
     const workspace = await this.prismaService.workspace.findUnique({
-      where: {
-        id: workspaceId,
-      },
+      where: { id: workspaceId },
     });
 
     if (!workspace) {
       throw new NotFoundException('Workspace not found in this organization');
     }
+
+    const isOrgAdmin = await this.isOrgAdmin(workspace.organizationId, userId);
 
     const member = await this.prismaService.workspaceMember.findUnique({
       where: {
@@ -48,7 +62,7 @@ export class ProjectsService {
       },
     });
 
-    if (!member) {
+    if (!member && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
@@ -114,11 +128,26 @@ export class ProjectsService {
       where: {
         id: workspaceId,
       },
+      include: {
+        organization: {
+          include: {
+            members: {
+              where: {
+                userId,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!workspace) {
       throw new NotFoundException('Workspace not found in this organization');
     }
+
+    const isOrgAdminOrOwner =
+      workspace.organization.members.length > 0 &&
+      ['OWNER', 'ADMIN'].includes(workspace.organization.members[0].role);
 
     const member = await this.prismaService.workspaceMember.findUnique({
       where: {
@@ -129,25 +158,27 @@ export class ProjectsService {
       },
     });
 
-    if (!member) {
+    if (!member && !isOrgAdminOrOwner) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
     const projects = await this.prismaService.project.findMany({
       where: {
         workspaceId,
-        OR: [
-          {
-            members: {
-              some: {
-                userId,
+        ...(!isOrgAdminOrOwner && {
+          OR: [
+            {
+              members: {
+                some: {
+                  userId,
+                },
               },
             },
-          },
-          {
-            nature: ProjectNature.PUBLIC,
-          },
-        ],
+            {
+              nature: ProjectNature.PUBLIC,
+            },
+          ],
+        }),
       },
     });
 
@@ -163,14 +194,32 @@ export class ProjectsService {
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
     const project = await this.prismaService.project.findUnique({
-      where: {
-        id: projectId,
+      where: { id: projectId },
+      include: {
+        workspace: {
+          include: {
+            organization: {
+              include: {
+                members: {
+                  where: { userId },
+                  select: { role: true },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
     if (!project) {
       throw new NotFoundException('Project not found');
     }
+
+    const isOrgAdmin =
+      project.workspace.organization.members.length > 0 &&
+      ['OWNER', 'ADMIN'].includes(
+        project.workspace.organization.members[0].role,
+      );
 
     const member = await this.prismaService.projectMember.findUnique({
       where: {
@@ -181,7 +230,7 @@ export class ProjectsService {
       },
     });
 
-    if (!member && project.nature !== ProjectNature.PUBLIC) {
+    if (!member && project.nature !== ProjectNature.PUBLIC && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this project');
     }
 
@@ -211,10 +260,15 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
+
     const userRole = project.members[0]?.role;
-    if (!userRole || !['OWNER', 'ADMIN'].includes(userRole)) {
+    if (!isOrgAdmin && (!userRole || !['OWNER', 'ADMIN'].includes(userRole))) {
       throw new ForbiddenException(
-        'Only project owner/admin can update project.',
+        'Only project owner/admin or organization owner/admin can update project.',
       );
     }
 
@@ -268,11 +322,17 @@ export class ProjectsService {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: true },
     });
 
     if (!project) {
       throw new NotFoundException('Project not found');
     }
+
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
 
     const workspaceMember = await this.prismaService.workspaceMember.findUnique(
       {
@@ -285,11 +345,12 @@ export class ProjectsService {
       },
     );
 
-    if (!workspaceMember) {
+    if (!workspaceMember && !isOrgAdmin) {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    if (project.nature === ProjectNature.PRIVATE) {
+    // If not an org admin, and project is private, check if user is a project member
+    if (!isOrgAdmin && project.nature === ProjectNature.PRIVATE) {
       const projectMember = await this.prismaService.projectMember.findUnique({
         where: {
           projectId_userId: {
@@ -340,7 +401,14 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    if (project.nature === ProjectNature.PRIVATE) {
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
+
+    if (isOrgAdmin) {
+      // Allow deletion
+    } else if (project.nature === ProjectNature.PRIVATE) {
       const projectMember = await this.prismaService.projectMember.findUnique({
         where: {
           projectId_userId: {
@@ -360,9 +428,7 @@ export class ProjectsService {
           'You are not allowed to delete this project',
         );
       }
-    }
-
-    if (project.nature === ProjectNature.PUBLIC) {
+    } else if (project.nature === ProjectNature.PUBLIC) {
       const workspaceMember =
         await this.prismaService.workspaceMember.findUnique({
           where: {
@@ -443,6 +509,29 @@ export class ProjectsService {
       throw new BadRequestException('User is not a member of this workspace');
     }
 
+    const isOrgAdmin = await this.isOrgAdmin(
+      workspaceMember.workspace.organizationId,
+      userId,
+    );
+
+    if (!isOrgAdmin) {
+      // Check if project admin/owner
+      const requester = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+
+      if (!requester || !['OWNER', 'ADMIN'].includes(requester.role)) {
+        throw new UnauthorizedException(
+          'Only project owner/admin or organization owner/admin can add members.',
+        );
+      }
+    }
+
     const existingMember = await this.prismaService.projectMember.findUnique({
       where: {
         projectId_userId: {
@@ -510,22 +599,29 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    // Check if the user making the request has permission (OWNER or ADMIN)
-    const requester = await this.prismaService.projectMember.findUnique({
-      where: {
-        projectId_userId: {
-          projectId,
-          userId,
-        },
-      },
-    });
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
 
-    if (!requester || !['OWNER', 'ADMIN'].includes(requester.role)) {
-      // Also allow if it's the user removing themselves
-      if (userId !== targetUserId) {
-        throw new ForbiddenException(
-          'Only project owner/admin can remove members.',
-        );
+    if (!isOrgAdmin) {
+      // Check if the user making the request has permission (OWNER or ADMIN)
+      const requester = await this.prismaService.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId,
+          },
+        },
+      });
+
+      if (!requester || !['OWNER', 'ADMIN'].includes(requester.role)) {
+        // Also allow if it's the user removing themselves
+        if (userId !== targetUserId) {
+          throw new ForbiddenException(
+            'Only project owner/admin or organization owner/admin can remove members.',
+          );
+        }
       }
     }
 
