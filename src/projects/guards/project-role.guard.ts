@@ -35,11 +35,26 @@ export class ProjectRoleGuard implements CanActivate {
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: {
+        workspace: {
+          include: {
+            organization: { include: { members: { where: { userId } } } },
+          },
+        },
+      },
     });
 
     if (!project) {
       throw new NotFoundException('Project not found');
     }
+
+    const isOrgAdminOrOwner =
+      project.workspace.organization.members.length > 0 &&
+      ['OWNER', 'ADMIN'].includes(
+        project.workspace.organization.members[0].role,
+      );
+
+    if (isOrgAdminOrOwner) return true;
 
     const membership = await this.prismaService.projectMember.findUnique({
       where: {
@@ -48,9 +63,9 @@ export class ProjectRoleGuard implements CanActivate {
           projectId,
         },
       },
+      include: { project: { include: { workspace: true } } },
     });
 
-    // If private project, user MUST be a project member
     if (!membership && project.nature === ProjectNature.PRIVATE) {
       throw new ForbiddenException('You are not a member of this project');
     }

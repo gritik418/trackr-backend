@@ -51,12 +51,19 @@ export class WorkspaceRoleGuard implements CanActivate {
               }
             : undefined,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        organization: { select: { members: { where: { userId } } } },
+      },
     });
 
     if (!workspace) {
       throw new ForbiddenException('Workspace not found or access denied');
     }
+
+    const isOrgAdminOrOwner =
+      workspace.organization.members.length > 0 &&
+      ['OWNER', 'ADMIN'].includes(workspace.organization.members[0].role);
 
     const membership = await this.prismaService.workspaceMember.findUnique({
       where: {
@@ -66,6 +73,12 @@ export class WorkspaceRoleGuard implements CanActivate {
         },
       },
     });
+
+    if (!membership && !isOrgAdminOrOwner) {
+      throw new ForbiddenException('You are not a member of this workspace');
+    }
+
+    if (isOrgAdminOrOwner) return true;
 
     if (!membership) {
       throw new ForbiddenException('You are not a member of this workspace');
