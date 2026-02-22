@@ -131,6 +131,7 @@ export class AuditLogsService {
       exportedBy: user.name,
       dateRange: query.dateRange.replaceAll('-', ' '),
     });
+
     return pdf;
   }
 }
