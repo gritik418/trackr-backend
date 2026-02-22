@@ -2,6 +2,7 @@ import { PrismaClient } from 'generated/prisma/client';
 import { PlanCreateInput } from 'generated/prisma/models';
 
 const plans: PlanCreateInput[] = [
+  // Free Tier
   {
     id: 'tier-free',
     name: 'Free',
@@ -37,6 +38,7 @@ const plans: PlanCreateInput[] = [
     createdAt: new Date(),
     updatedAt: new Date(),
   },
+  // Pro Monthly
   {
     id: 'tier-pro',
     name: 'Pro',
@@ -71,6 +73,43 @@ const plans: PlanCreateInput[] = [
     createdAt: new Date(),
     updatedAt: new Date(),
   },
+  // Pro Yearly
+  {
+    id: 'tier-pro-yearly',
+    name: 'Pro',
+    type: 'PRO',
+    description: 'The standard for high-performance teams.',
+    price: 12 * 12 * 0.9, // 10% discount for yearly,
+    currency: 'USD',
+    interval: 'YEAR',
+    isActive: true,
+    isMostPopular: true,
+    note: 'Billed yearly at 10% discount',
+    features: [
+      { text: 'Everything in Free', included: true },
+      { text: 'Up to 5 Workspaces per Organization', included: true },
+      { text: 'Up to 3 Projects per Workspace', included: true },
+      { text: 'Unlimited Tasks per Project', included: true },
+      { text: 'Up to 15 Team Members', included: true },
+      { text: '45-day Activity Archive', included: true },
+      { text: 'Priority Email Support', included: true },
+      { text: 'Export Audit Logs', included: false },
+      { text: '24/7 Priority Support', included: false },
+      { text: 'Advanced Analytics Suite', included: false },
+    ],
+    limits: {
+      maxOrganizations: 1,
+      maxWorkspacesPerOrg: 5,
+      maxProjectsPerWorkspace: 3,
+      maxTasksPerProject: null,
+      maxMembersPerOrg: 15,
+      auditLogRetentionDays: 45,
+      isLogExportAvailable: false,
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  // Business Monthly
   {
     id: 'tier-business',
     name: 'Business',
@@ -79,6 +118,43 @@ const plans: PlanCreateInput[] = [
     price: 24,
     currency: 'USD',
     interval: 'MONTH',
+    isActive: true,
+    isMostPopular: false,
+    features: [
+      { text: 'Everything in Pro', included: true },
+      { text: 'Up to 5 Business Organizations', included: true },
+      { text: 'Up to 10 Workspaces per Organization', included: true },
+      { text: 'Up to 20 Projects per Workspace', included: true },
+      { text: 'Unlimited Tasks per Project', included: true },
+      { text: 'Up to 50 Team Members per Organization', included: true },
+      { text: '90-day Activity Archive', included: true },
+      { text: 'Export Audit Logs', included: true },
+      { text: '24/7 Priority Support', included: true },
+      { text: 'Advanced Analytics Suite', included: true },
+    ],
+    limits: {
+      maxOrganizations: 5,
+      maxWorkspacesPerOrg: 10,
+      maxProjectsPerWorkspace: 20,
+      maxTasksPerProject: null,
+      maxMembersPerOrg: 50,
+      auditLogRetentionDays: 90,
+      isLogExportAvailable: true,
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  // Business Yearly
+  {
+    id: 'tier-business-yearly',
+    name: 'Business',
+    type: 'BUSINESS',
+    description: 'Scale your organization with advanced controls.',
+
+    currency: 'USD',
+    interval: 'YEAR',
+    price: Math.round(12 * 12 * 0.88), // 12% discount
+    note: 'Billed yearly at 12% discount',
     isActive: true,
     isMostPopular: false,
     features: [
