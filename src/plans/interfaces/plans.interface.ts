@@ -4,11 +4,11 @@ export interface PlanFeature {
 }
 
 export interface PlanLimits {
-  maxOrganizations: number;
-  maxWorkspacesPerOrg: number;
-  maxProjectsPerWorkspace: number;
-  maxTasksPerProject: number;
-  maxMembersPerOrg: number;
-  auditLogRetentionDays: number;
+  maxOrganizations: number | null; // null = unlimited
+  maxWorkspacesPerOrg: number | null; // null = unlimited
+  maxProjectsPerWorkspace: number | null; // null = unlimited
+  maxTasksPerProject: number | null; // null = unlimited
+  maxMembersPerOrg: number | null; // null = unlimited
+  auditLogRetentionDays: number | null; // null = unlimited
   isLogExportAvailable: boolean;
 }

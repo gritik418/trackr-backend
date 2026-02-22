@@ -297,6 +297,7 @@ model Plan {
   name        String
   type        PlanType
   description String
+  note        String?
 
   price    Int
   currency String
@@ -323,6 +324,7 @@ enum PlanType {
   ENTERPRISE
   EARLY_ACCESS
   CUSTOM
+  BUSINESS
 }
 
 enum UserRole {
