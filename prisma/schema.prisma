@@ -37,9 +37,10 @@ model User {
   taskComments    TaskComment[]
   taskAttachments TaskAttachment[]
 
-  assignedTasks Task[]     @relation("TaskAssignees")
-  createdTasks  Task[]     @relation("CreatedTasks")
+  assignedTasks Task[]         @relation("TaskAssignees")
+  createdTasks  Task[]         @relation("CreatedTasks")
   auditLogs     AuditLog[]
+  subscriptions Subscription[]
 }
 
 model AuditLog {
@@ -310,6 +311,37 @@ model Plan {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id           String             @id @default(cuid())
+  userId       String
+  planId       String
+  status       SubscriptionStatus
+  startDate    DateTime
+  endDate      DateTime?
+  trialEndDate DateTime?
+  autoRenew    Boolean            @default(true)
+  price        Int
+  currency     String
+  interval     PlanInterval?
+  features     Json
+  limits       Json
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  plan Plan @relation(fields: [planId], references: [id])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+  TRIAL
+  PAST_DUE
 }
 
 enum PlanInterval {
