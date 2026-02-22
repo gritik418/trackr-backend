@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
-import { PlansService, Plan } from './plans.service';
+import { PlansService } from './plans.service';
 
 @Controller('plans')
 export class PlansController {
   constructor(private readonly plansService: PlansService) {}
 
   @Get()
-  async getPlans(): Promise<Plan[]> {
+  async getPlans() {
     return this.plansService.getPlans();
   }
 }
