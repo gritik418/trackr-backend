@@ -3,12 +3,14 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Query,
   Req,
+  Res,
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { OrgRole } from 'generated/prisma/enums';
 import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
@@ -51,5 +53,19 @@ export class AuditLogsController {
       workspaceId,
       ...query,
     });
+  }
+
+  @Get('/export/:orgId')
+  @HttpCode(HttpStatus.OK)
+  @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
+  @UseGuards(OrgRoleGuard)
+  @UsePipes(new ZodValidationPipe(getAuditLogsSchema))
+  async exportWorkspaceLogs(
+    @Param('orgId') orgId: string,
+    @Res() res: Response,
+    @Req() req: Request,
+    @Query() query: GetAuditLogsDto,
+  ) {
+    return this.auditLogsService.exportLogs(orgId, res, req, query);
   }
 }

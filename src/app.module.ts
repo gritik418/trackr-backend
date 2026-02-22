@@ -14,6 +14,7 @@ import { CloudinaryModule } from './providers/cloudinary/cloudinary.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ProjectsModule } from './projects/projects.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { PdfModule } from './pdf/pdf.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
     TasksModule,
     ProjectsModule,
     AuditLogsModule,
+    PdfModule,
   ],
   controllers: [AppController],
   providers: [AppService],

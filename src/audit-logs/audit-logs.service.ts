@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
+import { PdfService } from 'src/pdf/pdf.service';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { GetAuditLogsDto } from './dto/get-audit-logs.schema';
 
 export interface CreateAuditLogDto {
   organizationId?: string;
@@ -16,7 +19,10 @@ export interface CreateAuditLogDto {
 
 @Injectable()
 export class AuditLogsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly pdfService: PdfService,
+  ) {}
 
   async createLog(data: CreateAuditLogDto) {
     return this.prismaService.auditLog.create({
@@ -85,5 +91,46 @@ export class AuditLogsService {
       limit,
       page,
     };
+  }
+
+  async exportLogs(
+    orgId: string,
+    res: Response,
+    req: Request,
+    query: GetAuditLogsDto,
+  ) {
+    const userId = req.user?.id;
+    if (!query.dateRange)
+      throw new BadRequestException('Date range is required');
+    if (!userId) throw new BadRequestException('User ID is required');
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+    if (!user) throw new BadRequestException('User not found');
+
+    const logs = await this.prismaService.auditLog.findMany({
+      where: {
+        organizationId: orgId,
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const pdf = this.pdfService.generateAuditLogsPdf(logs, res, {
+      exportedBy: user.name,
+      dateRange: query.dateRange.replaceAll('-', ' '),
+    });
+    return pdf;
   }
 }

@@ -1,13 +1,9 @@
 import { z } from 'zod';
-import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
 
 export const getAuditLogsSchema = z.object({
-  limit: z.coerce.number().min(1).max(100).default(50),
-  page: z.coerce.number().min(1).default(1),
-  action: z.enum(AuditAction).optional(),
-  entityType: z.enum(AuditEntityType).optional(),
-  entityId: z.string().optional(),
-  userId: z.string().optional(),
+  dateRange: z
+    .enum(['all-time', 'last-7-days', 'last-30-days', 'last-90-days'])
+    .default('all-time'),
 });
 
 export type GetAuditLogsDto = z.infer<typeof getAuditLogsSchema>;
