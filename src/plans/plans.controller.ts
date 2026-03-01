@@ -9,4 +9,9 @@ export class PlansController {
   async getPlans() {
     return this.plansService.getPlans();
   }
+
+  @Get('early-access')
+  async getEarlyAccessPlan() {
+    return this.plansService.getEarlyAccessPlan();
+  }
 }
