@@ -189,6 +189,7 @@ const plans: PlanCreateInput[] = [
       'Full power for early believers. High-octane productivity for free.',
     price: 0,
     currency: 'USD',
+    note: 'Free during beta. Premium feature access for early users.',
     interval: null,
     isActive: true,
     isMostPopular: false,

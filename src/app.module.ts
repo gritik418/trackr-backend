@@ -16,6 +16,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { PdfModule } from './pdf/pdf.module';
 import { PlansModule } from './plans/plans.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { PlansModule } from './plans/plans.module';
     AuditLogsModule,
     PdfModule,
     PlansModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
