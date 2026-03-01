@@ -9,6 +9,7 @@ export class PlansService {
     const plans = await this.prismaService.plan.findMany();
 
     return {
+      success: true,
       message: 'Plans retrieved successfully.',
       plans,
     };

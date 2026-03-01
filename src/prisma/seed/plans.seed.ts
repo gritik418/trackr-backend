@@ -153,7 +153,7 @@ const plans: PlanCreateInput[] = [
 
     currency: 'USD',
     interval: 'YEAR',
-    price: Math.round(12 * 12 * 0.88), // 12% discount
+    price: Math.round(24 * 12 * 0.88), // 12% discount
     note: 'Billed yearly at 12% discount',
     isActive: true,
     isMostPopular: false,
@@ -216,6 +216,7 @@ const plans: PlanCreateInput[] = [
 ];
 
 export async function seedPlans(prisma: PrismaClient) {
+  await prisma.plan.deleteMany();
   for (const plan of plans) {
     await prisma.plan.upsert({
       where: { id: plan.id },
