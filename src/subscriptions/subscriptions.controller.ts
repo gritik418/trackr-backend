@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
   Req,
   UseGuards,
@@ -19,6 +20,11 @@ import { SubscriptionsService } from './subscriptions.service';
 @Controller('subscriptions')
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
+
+  @Get('active')
+  async getActiveSubscription(@Req() req: Request) {
+    return this.subscriptionsService.getActiveSubscription(req);
+  }
 
   @Post('early-access')
   @UsePipes(new ZodValidationPipe(claimEarlyAccessSchema))

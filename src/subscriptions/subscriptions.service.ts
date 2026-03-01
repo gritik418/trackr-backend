@@ -125,4 +125,29 @@ export class SubscriptionsService {
       subscription: claimed,
     };
   }
+
+  async getActiveSubscription(req: Request) {
+    const userId = req.user?.id;
+
+    if (!userId)
+      throw new BadRequestException(
+        'You must be logged in to claim early access.',
+      );
+
+    const activeSubscription = await this.prismaService.subscription.findFirst({
+      where: {
+        userId,
+        status: SubscriptionStatus.ACTIVE,
+      },
+    });
+
+    if (!activeSubscription)
+      throw new BadRequestException('No active subscription found.');
+
+    return {
+      success: true,
+      message: 'Active subscription found.',
+      subscription: activeSubscription,
+    };
+  }
 }
