@@ -26,6 +26,11 @@ export class SubscriptionsController {
     return this.subscriptionsService.getActiveSubscription(req);
   }
 
+  @Get('history')
+  async getSubscriptionHistory(@Req() req: Request) {
+    return this.subscriptionsService.getSubscriptionHistory(req);
+  }
+
   @Post('early-access')
   @UsePipes(new ZodValidationPipe(claimEarlyAccessSchema))
   async claimEarlyAccess(

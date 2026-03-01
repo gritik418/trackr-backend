@@ -150,4 +150,28 @@ export class SubscriptionsService {
       subscription: activeSubscription,
     };
   }
+
+  async getSubscriptionHistory(req: Request) {
+    const userId = req.user?.id;
+
+    if (!userId)
+      throw new BadRequestException(
+        'You must be logged in to claim early access.',
+      );
+
+    const history = await this.prismaService.subscription.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Subscription history found.',
+      history,
+    };
+  }
 }
