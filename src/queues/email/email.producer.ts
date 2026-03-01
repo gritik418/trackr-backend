@@ -7,6 +7,7 @@ import { ForgotPasswordEmailDTO } from './dto/forgot-password-email.dto';
 import { OrganizationInviteEmailDTO } from './dto/organization-invite-email.dto';
 import { WorkspaceInviteEmailDTO } from './dto/workspace-invite-email.dto';
 import { WelcomeEmailDTO } from './dto/welcome-email.dto';
+import { EarlyAccessActivationEmailDTO } from './dto/early-access-activation-email.dto';
 
 @Injectable()
 export class EmailProducer {
@@ -53,6 +54,15 @@ export class EmailProducer {
 
   async sendWorkspaceInviteEmail(data: WorkspaceInviteEmailDTO) {
     await this.emailQueue.add(EMAIL_JOBS.WORKSPACE_INVITE, data, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 },
+      removeOnComplete: true,
+      removeOnFail: 50,
+    });
+  }
+
+  async sendEarlyAccessActivationEmail(data: EarlyAccessActivationEmailDTO) {
+    await this.emailQueue.add(EMAIL_JOBS.SEND_EARLY_ACCESS_ACTIVATION, data, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },
       removeOnComplete: true,

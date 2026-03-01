@@ -15,6 +15,7 @@ import { OrganizationInviteEmailDTO } from './dto/organization-invite-email.dto'
 import { WorkspaceInviteEmailDTO } from './dto/workspace-invite-email.dto';
 import { SendEmailParams } from './email.interface';
 import type { WelcomeEmailDTO } from './dto/welcome-email.dto';
+import { EarlyAccessActivationEmailDTO } from './dto/early-access-activation-email.dto';
 
 @Processor(EMAIL_QUEUE)
 export class EmailProcessor extends WorkerHost implements OnModuleInit {
@@ -139,6 +140,17 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
           subject: `👋 Welcome to Trackr, ${data.name}!`,
           templateName: templateNames.welcome,
           text: `Hello ${data.name},\n\nWelcome to Trackr! We're excited to have you on board.\n\nBest,\nTrackr Team`,
+        });
+        break;
+      }
+      case EMAIL_JOBS.SEND_EARLY_ACCESS_ACTIVATION: {
+        const data = job.data as EarlyAccessActivationEmailDTO;
+        this.sendEmail({
+          to: data.email,
+          data: data,
+          subject: `🌟 Early Access Plan Activated - Trackr`,
+          templateName: templateNames.earlyAccessActivation,
+          text: `Hello ${data.name},\n\nYour Early Access Plan on Trackr is now active. Thank you for being an early believer!\n\nBest,\nTrackr Team`,
         });
         break;
       }

@@ -1,15 +1,22 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { Plan } from 'generated/prisma/client';
 import {
   PlanInterval,
   PlanType,
   SubscriptionStatus,
 } from 'generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { EmailProducer } from 'src/queues/email/email.producer';
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly emailProducer: EmailProducer,
+    private readonly configService: ConfigService,
+  ) {}
 
   async claimEarlyAccess(planId: string, req: Request) {
     const userId = req.user?.id;
@@ -30,11 +37,12 @@ export class SubscriptionsService {
         'You must be logged in to claim early access.',
       );
 
-    const earlyAccessPlan = await this.prismaService.plan.findUnique({
-      where: {
-        id: planId,
-      },
-    });
+    const earlyAccessPlan: Plan | null =
+      await this.prismaService.plan.findUnique({
+        where: {
+          id: planId,
+        },
+      });
 
     if (!earlyAccessPlan)
       throw new BadRequestException('Early access plan not found.');
@@ -93,6 +101,22 @@ export class SubscriptionsService {
         features: earlyAccessPlan.features || {},
         limits: earlyAccessPlan.limits || {},
       },
+    });
+
+    const features = earlyAccessPlan.features as {
+      included: boolean;
+      text: string;
+    }[];
+
+    const planFeatures: string[] =
+      features.filter((f) => f.included).map((f) => f.text) || [];
+
+    await this.emailProducer.sendEarlyAccessActivationEmail({
+      email: user.email,
+      name: user.name,
+      planName: earlyAccessPlan.name,
+      features: planFeatures,
+      clientUrl: this.configService.get<string>('CLIENT_URL')!,
     });
 
     return {

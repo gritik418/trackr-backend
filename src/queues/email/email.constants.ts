@@ -9,4 +9,5 @@ export const EMAIL_JOBS = {
   WORKSPACE_INVITE: 'workspace-invite',
 
   WELCOME: 'welcome',
+  SEND_EARLY_ACCESS_ACTIVATION: 'send-early-access-activation',
 };

@@ -6,14 +6,14 @@ import {
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
-import { SubscriptionsService } from './subscriptions.service';
 import { Request } from 'express';
+import { AuthGuard } from 'src/common/guards/auth/auth.guard';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
 import {
   ClaimEarlyAccessDto,
   claimEarlyAccessSchema,
 } from './dto/claim-early-access.schema';
-import { AuthGuard } from 'src/common/guards/auth/auth.guard';
+import { SubscriptionsService } from './subscriptions.service';
 
 @UseGuards(AuthGuard)
 @Controller('subscriptions')

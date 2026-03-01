@@ -4,6 +4,7 @@ const templateNames = {
   organizationInvite: 'organization-invite',
   workspaceInvite: 'workspace-invite',
   welcome: 'welcome',
+  earlyAccessActivation: 'early-access-activation',
 };
 
 export default templateNames;
