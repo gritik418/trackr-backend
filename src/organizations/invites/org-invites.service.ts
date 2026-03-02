@@ -401,6 +401,7 @@ export class OrgInvitesService {
         where: { id: validInvite.id },
         data: {
           acceptedAt: new Date(),
+          status: InviteStatus.ACCEPTED,
         },
       });
 

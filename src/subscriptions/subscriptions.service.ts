@@ -149,6 +149,9 @@ export class SubscriptionsService {
         orgId,
         status: SubscriptionStatus.ACTIVE,
       },
+      include: {
+        plan: true,
+      },
     });
 
     if (!activeSubscription)
