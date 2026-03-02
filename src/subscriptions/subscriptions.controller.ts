@@ -37,8 +37,11 @@ export class SubscriptionsController {
   async claimEarlyAccess(
     @Body() body: ClaimEarlyAccessDto,
     @Req() req: Request,
-    @Param('orgId') orgId: string,
   ) {
-    return this.subscriptionsService.claimEarlyAccess(body.planId, orgId, req);
+    return this.subscriptionsService.claimEarlyAccess(
+      body.planId,
+      body.orgId,
+      req,
+    );
   }
 }
