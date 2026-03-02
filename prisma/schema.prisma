@@ -40,7 +40,7 @@ model User {
   assignedTasks Task[]         @relation("TaskAssignees")
   createdTasks  Task[]         @relation("CreatedTasks")
   auditLogs     AuditLog[]
-  subscriptions Subscription[]
+  planRedemptions PlanRedemption[]
 }
 
 model AuditLog {
@@ -82,6 +82,7 @@ model Organization {
   members    OrganizationMember[]
   workspaces Workspace[]
   auditLogs  AuditLog[]
+  subscriptions Subscription[]
 }
 
 model OrganizationMember {
@@ -313,28 +314,49 @@ model Plan {
   updatedAt DateTime @updatedAt
 
   subscriptions Subscription[]
+  planRedemptions PlanRedemption[]
 }
 
 model Subscription {
   id           String             @id @default(cuid())
-  userId       String
+  orgId        String
   planId       String
   planType     PlanType
   status       SubscriptionStatus
   startDate    DateTime
   endDate      DateTime?
-  trialEndDate DateTime?
+  expiresAt    DateTime?
   autoRenew    Boolean            @default(true)
   price        Int
   currency     String
+
+  features      Json
+  limits        Json
+  
   interval     PlanInterval?
-  features     Json
-  limits       Json
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
-  plan Plan @relation(fields: [planId], references: [id])
+  organization Organization @relation(fields: [orgId], references: [id])
+  plan         Plan         @relation(fields: [planId], references: [id])
+}
+
+model PlanRedemption {
+  id          String   @id @default(cuid())
+
+  userId      String
+  planId      String
+
+  redeemedAt  DateTime @default(now())
+  endDate      DateTime?
+  expiresAt    DateTime?
+
+  isActive       Boolean  @default(true)
+
+  user        User @relation(fields: [userId], references: [id])
+  plan        Plan @relation(fields: [planId], references: [id])
+
+  @@unique([userId, planId])
 }
 
 enum SubscriptionStatus {

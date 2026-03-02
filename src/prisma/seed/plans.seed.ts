@@ -1,5 +1,5 @@
 import { PrismaClient } from 'generated/prisma/client';
-import { PlanCreateInput } from 'generated/prisma/models';
+import { PlanCreateInput, PlanUpdateInput } from 'generated/prisma/models';
 
 const plans: PlanCreateInput[] = [
   // Free Tier
@@ -14,9 +14,8 @@ const plans: PlanCreateInput[] = [
     isActive: true,
     isMostPopular: false,
     features: [
-      { text: '1 Business Organization', included: true },
       { text: '1 Private Workspace', included: true },
-      { text: '3 Projects per Workspace', included: true },
+      { text: 'Upto 3 Projects', included: true },
       { text: '50 Tasks per Project', included: true },
       { text: 'Up to 3 Team Members', included: true },
       { text: 'Role-based Access Control', included: true },
@@ -26,8 +25,7 @@ const plans: PlanCreateInput[] = [
       { text: 'Export Audit Logs', included: false },
     ],
     limits: {
-      maxOrganizations: 1,
-      maxWorkspacesPerOrg: 1,
+      maxWorkspaces: 1,
       maxProjectsPerWorkspace: 3,
       maxTasksPerProject: 50,
       maxMembersPerOrg: 3,
@@ -51,9 +49,9 @@ const plans: PlanCreateInput[] = [
     isMostPopular: true,
     features: [
       { text: 'Everything in Free', included: true },
-      { text: 'Up to 5 Workspaces per Organization', included: true },
-      { text: 'Up to 3 Projects per Workspace', included: true },
-      { text: 'Unlimited Tasks per Project', included: true },
+      { text: 'Upto 5 Workspaces', included: true },
+      { text: 'Upto 3 Projects per Workspace', included: true },
+      { text: 'Unlimited Tasks', included: true },
       { text: 'Up to 15 Team Members', included: true },
       { text: '45-day Activity Archive', included: true },
       { text: 'Priority Email Support', included: true },
@@ -62,8 +60,7 @@ const plans: PlanCreateInput[] = [
       { text: 'Advanced Analytics Suite', included: false },
     ],
     limits: {
-      maxOrganizations: 1,
-      maxWorkspacesPerOrg: 5,
+      maxWorkspaces: 5,
       maxProjectsPerWorkspace: 3,
       maxTasksPerProject: null,
       maxMembersPerOrg: 15,
@@ -87,9 +84,9 @@ const plans: PlanCreateInput[] = [
     note: 'Billed yearly at 10% discount',
     features: [
       { text: 'Everything in Free', included: true },
-      { text: 'Up to 5 Workspaces per Organization', included: true },
-      { text: 'Up to 3 Projects per Workspace', included: true },
-      { text: 'Unlimited Tasks per Project', included: true },
+      { text: 'Upto 5 Workspaces', included: true },
+      { text: 'Upto 3 Projects per Workspace', included: true },
+      { text: 'Unlimited Tasks', included: true },
       { text: 'Up to 15 Team Members', included: true },
       { text: '45-day Activity Archive', included: true },
       { text: 'Priority Email Support', included: true },
@@ -98,8 +95,7 @@ const plans: PlanCreateInput[] = [
       { text: 'Advanced Analytics Suite', included: false },
     ],
     limits: {
-      maxOrganizations: 1,
-      maxWorkspacesPerOrg: 5,
+      maxWorkspaces: 5,
       maxProjectsPerWorkspace: 3,
       maxTasksPerProject: null,
       maxMembersPerOrg: 15,
@@ -122,9 +118,8 @@ const plans: PlanCreateInput[] = [
     isMostPopular: false,
     features: [
       { text: 'Everything in Pro', included: true },
-      { text: 'Up to 5 Business Organizations', included: true },
-      { text: 'Up to 10 Workspaces per Organization', included: true },
-      { text: 'Up to 20 Projects per Workspace', included: true },
+      { text: 'Upto 10 Workspaces', included: true },
+      { text: 'Upto 5 Projects per Workspace', included: true },
       { text: 'Unlimited Tasks per Project', included: true },
       { text: 'Up to 50 Team Members per Organization', included: true },
       { text: '90-day Activity Archive', included: true },
@@ -133,9 +128,8 @@ const plans: PlanCreateInput[] = [
       { text: 'Advanced Analytics Suite', included: true },
     ],
     limits: {
-      maxOrganizations: 5,
-      maxWorkspacesPerOrg: 10,
-      maxProjectsPerWorkspace: 20,
+      maxWorkspaces: 10,
+      maxProjectsPerWorkspace: 5,
       maxTasksPerProject: null,
       maxMembersPerOrg: 50,
       auditLogRetentionDays: 90,
@@ -159,10 +153,9 @@ const plans: PlanCreateInput[] = [
     isMostPopular: false,
     features: [
       { text: 'Everything in Pro', included: true },
-      { text: 'Up to 5 Business Organizations', included: true },
-      { text: 'Up to 10 Workspaces per Organization', included: true },
-      { text: 'Up to 20 Projects per Workspace', included: true },
-      { text: 'Unlimited Tasks per Project', included: true },
+      { text: 'Upto 10 Workspaces', included: true },
+      { text: 'Upto 5 Projects per Workspace', included: true },
+      { text: 'Unlimited Tasks', included: true },
       { text: 'Up to 50 Team Members per Organization', included: true },
       { text: '90-day Activity Archive', included: true },
       { text: 'Export Audit Logs', included: true },
@@ -170,9 +163,8 @@ const plans: PlanCreateInput[] = [
       { text: 'Advanced Analytics Suite', included: true },
     ],
     limits: {
-      maxOrganizations: 5,
-      maxWorkspacesPerOrg: 10,
-      maxProjectsPerWorkspace: 20,
+      maxWorkspaces: 10,
+      maxProjectsPerWorkspace: 5,
       maxTasksPerProject: null,
       maxMembersPerOrg: 50,
       auditLogRetentionDays: 90,
@@ -194,7 +186,6 @@ const plans: PlanCreateInput[] = [
     isActive: true,
     isMostPopular: false,
     features: [
-      { text: '1 Business Organization', included: true },
       { text: 'Up to 5 Workspaces (Beta)', included: true },
       { text: 'Up to 3 Projects per Workspace (Beta)', included: true },
       { text: 'Unlimited Tasks (Beta)', included: true },
@@ -203,8 +194,7 @@ const plans: PlanCreateInput[] = [
       { text: 'Role-based Access Control', included: true },
     ],
     limits: {
-      maxOrganizations: 1,
-      maxWorkspacesPerOrg: 5,
+      maxWorkspaces: 5,
       maxProjectsPerWorkspace: 3,
       maxTasksPerProject: null,
       maxMembersPerOrg: 15,
@@ -218,11 +208,18 @@ const plans: PlanCreateInput[] = [
 
 export async function seedPlans(prisma: PrismaClient) {
   await prisma.plan.deleteMany();
+
   for (const plan of plans) {
+    const updateInput: PlanUpdateInput = {
+      ...plan,
+      limits: plan.limits as any,
+      features: plan.features as any,
+    };
+
     await prisma.plan.upsert({
       where: { id: plan.id },
       create: plan,
-      update: plan,
+      update: updateInput,
     });
   }
   console.log('✅ Plans seeded successfully');

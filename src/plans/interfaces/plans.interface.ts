@@ -4,8 +4,7 @@ export interface PlanFeature {
 }
 
 export interface PlanLimits {
-  maxOrganizations: number | null; // null = unlimited
-  maxWorkspacesPerOrg: number | null; // null = unlimited
+  maxWorkspaces: number | null; // null = unlimited
   maxProjectsPerWorkspace: number | null; // null = unlimited
   maxTasksPerProject: number | null; // null = unlimited
   maxMembersPerOrg: number | null; // null = unlimited

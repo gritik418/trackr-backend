@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { Plan } from 'generated/prisma/client';
@@ -18,11 +22,11 @@ export class SubscriptionsService {
     private readonly configService: ConfigService,
   ) {}
 
-  async claimEarlyAccess(planId: string, req: Request) {
+  async claimEarlyAccess(planId: string, orgId: string, req: Request) {
     const userId = req.user?.id;
 
     if (!userId)
-      throw new BadRequestException(
+      throw new UnauthorizedException(
         'You must be logged in to claim early access.',
       );
 
@@ -33,7 +37,7 @@ export class SubscriptionsService {
     });
 
     if (!user)
-      throw new BadRequestException(
+      throw new UnauthorizedException(
         'You must be logged in to claim early access.',
       );
 
@@ -53,7 +57,7 @@ export class SubscriptionsService {
     )
       throw new BadRequestException('Early access plan is not active.');
 
-    const isAlreadyClaimed = await this.prismaService.subscription.findFirst({
+    const isAlreadyClaimed = await this.prismaService.planRedemption.findFirst({
       where: {
         userId,
         planId: earlyAccessPlan.id,
@@ -65,7 +69,7 @@ export class SubscriptionsService {
 
     const activeSubscription = await this.prismaService.subscription.findFirst({
       where: {
-        userId,
+        orgId,
         status: SubscriptionStatus.ACTIVE,
       },
     });
@@ -82,7 +86,7 @@ export class SubscriptionsService {
 
     const claimed = await this.prismaService.subscription.create({
       data: {
-        userId: userId,
+        orgId,
         planId: earlyAccessPlan.id,
         planType: earlyAccessPlan.type,
         status: SubscriptionStatus.ACTIVE,
@@ -93,13 +97,23 @@ export class SubscriptionsService {
             : earlyAccessPlan.interval === PlanInterval.YEAR
               ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
               : null,
-        trialEndDate: null,
         autoRenew: false,
         price: earlyAccessPlan.price,
         currency: earlyAccessPlan.currency,
         interval: earlyAccessPlan.interval,
         features: earlyAccessPlan.features || {},
         limits: earlyAccessPlan.limits || {},
+      },
+    });
+
+    await this.prismaService.planRedemption.create({
+      data: {
+        userId,
+        planId: earlyAccessPlan.id,
+        endDate: null,
+        redeemedAt: new Date(),
+        expiresAt: claimed.endDate,
+        isActive: true,
       },
     });
 
@@ -126,17 +140,13 @@ export class SubscriptionsService {
     };
   }
 
-  async getActiveSubscription(req: Request) {
-    const userId = req.user?.id;
-
-    if (!userId)
-      throw new BadRequestException(
-        'You must be logged in to claim early access.',
-      );
+  async getActiveSubscription(orgId: string) {
+    if (!orgId)
+      throw new BadRequestException('Please provide organization ID.');
 
     const activeSubscription = await this.prismaService.subscription.findFirst({
       where: {
-        userId,
+        orgId,
         status: SubscriptionStatus.ACTIVE,
       },
     });
@@ -151,17 +161,13 @@ export class SubscriptionsService {
     };
   }
 
-  async getSubscriptionHistory(req: Request) {
-    const userId = req.user?.id;
-
-    if (!userId)
-      throw new BadRequestException(
-        'You must be logged in to claim early access.',
-      );
+  async getSubscriptionHistory(orgId: string) {
+    if (!orgId)
+      throw new BadRequestException('Please provide organization ID.');
 
     const history = await this.prismaService.subscription.findMany({
       where: {
-        userId,
+        orgId,
       },
       orderBy: {
         createdAt: 'desc',

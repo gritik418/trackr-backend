@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Req,
   UseGuards,
@@ -17,18 +18,18 @@ import {
 import { SubscriptionsService } from './subscriptions.service';
 
 @UseGuards(AuthGuard)
-@Controller('subscriptions')
+@Controller('organizations/:orgId/subscription')
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
-  @Get('active')
-  async getActiveSubscription(@Req() req: Request) {
-    return this.subscriptionsService.getActiveSubscription(req);
+  @Get('')
+  async getActiveSubscription(@Param('orgId') orgId: string) {
+    return this.subscriptionsService.getActiveSubscription(orgId);
   }
 
   @Get('history')
-  async getSubscriptionHistory(@Req() req: Request) {
-    return this.subscriptionsService.getSubscriptionHistory(req);
+  async getSubscriptionHistory(@Param('orgId') orgId: string) {
+    return this.subscriptionsService.getSubscriptionHistory(orgId);
   }
 
   @Post('early-access')
@@ -36,7 +37,8 @@ export class SubscriptionsController {
   async claimEarlyAccess(
     @Body() body: ClaimEarlyAccessDto,
     @Req() req: Request,
+    @Param('orgId') orgId: string,
   ) {
-    return this.subscriptionsService.claimEarlyAccess(body.planId, req);
+    return this.subscriptionsService.claimEarlyAccess(body.planId, orgId, req);
   }
 }
