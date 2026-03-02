@@ -294,6 +294,7 @@ export class OrganizationsService {
 
     const member = await this.prismaService.organizationMember.findUnique({
       where: { id: memberId },
+      include: { user: true },
     });
 
     if (!member || member.organizationId !== orgId) {
@@ -347,7 +348,15 @@ export class OrganizationsService {
       entityId: memberId,
       organizationId: orgId,
       userId: req.user.id,
-      details: { removedUserId: member.userId, role: member.role },
+      details: {
+        affectedUser: {
+          id: member.userId,
+          name: member.user.name,
+          email: member.user.email,
+          role: member.role,
+        },
+        removedBy: req.user.id,
+      },
       ipAddress: req.ip as string,
       userAgent: req.headers['user-agent'] as string,
     });
@@ -369,6 +378,7 @@ export class OrganizationsService {
 
     const member = await this.prismaService.organizationMember.findUnique({
       where: { id: memberId },
+      include: { user: true },
     });
 
     if (!member || member.organizationId !== orgId) {
@@ -455,6 +465,12 @@ export class OrganizationsService {
         previousRole: member.role,
         newRole: role,
         targetUserId: member.userId,
+        affectedUser: {
+          id: member.userId,
+          name: member.user.name,
+          email: member.user.email,
+          role: member.role,
+        },
       },
       ipAddress: req.ip as string,
       userAgent: req.headers['user-agent'] as string,
