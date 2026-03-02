@@ -1,9 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
+import {
+  AuditAction,
+  AuditEntityType,
+  SubscriptionStatus,
+} from 'generated/prisma/enums';
 import { PdfService } from 'src/pdf/pdf.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetAuditLogsDto } from './dto/get-audit-logs.schema';
+import { PlanLimits } from 'src/plans/interfaces/plans.interface';
 
 export interface CreateAuditLogDto {
   organizationId?: string;
@@ -33,16 +38,7 @@ export class AuditLogsService {
     });
   }
 
-  async getLogs(params: {
-    orgId?: string;
-    workspaceId?: string;
-    userId?: string;
-    action?: AuditAction;
-    entityType?: AuditEntityType;
-    entityId?: string;
-    limit?: number;
-    page?: number;
-  }) {
+  async getLogs(params: GetAuditLogsDto) {
     const {
       orgId,
       workspaceId,
@@ -52,6 +48,9 @@ export class AuditLogsService {
       entityId,
       limit = 50,
       page = 1,
+      search,
+      startDate,
+      endDate,
     } = params;
 
     const skip = (page - 1) * limit;
@@ -63,10 +62,48 @@ export class AuditLogsService {
     if (action) where.action = action;
     if (entityType) where.entityType = entityType;
     if (entityId) where.entityId = entityId;
+    if (search) {
+      where.OR = [
+        { action: { contains: search, mode: 'insensitive' } },
+        { entityType: { contains: search, mode: 'insensitive' } },
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const subscription = await this.prismaService.subscription.findFirst({
+      where: {
+        orgId,
+        status: SubscriptionStatus.ACTIVE,
+      },
+    });
+
+    if (!subscription) {
+      throw new BadRequestException('No active subscription found.');
+    }
+
+    const limits = subscription.limits as unknown as PlanLimits;
+
+    if (limits.auditLogRetentionDays) {
+      const requestedDays =
+        new Date(endDate || Date.now()).getTime() -
+        new Date(startDate || 0).getTime();
+      if (requestedDays > limits.auditLogRetentionDays * 24 * 60 * 60 * 1000) {
+        throw new BadRequestException(
+          'Requested date range is greater than allowed audit log retention days.',
+        );
+      }
+    }
+
+    if (startDate || endDate) {
+      where.createdAt = {
+        gte: new Date(startDate || 0),
+        lte: new Date(endDate || Date.now()),
+      };
+    }
 
     const [logs, total] = await Promise.all([
       this.prismaService.auditLog.findMany({
-        where,
         take: limit,
         skip,
         orderBy: { createdAt: 'desc' },
@@ -100,8 +137,48 @@ export class AuditLogsService {
     query: GetAuditLogsDto,
   ) {
     const userId = req.user?.id;
-    if (!query.dateRange)
-      throw new BadRequestException('Date range is required');
+
+    const subscription = await this.prismaService.subscription.findFirst({
+      where: {
+        orgId,
+        status: SubscriptionStatus.ACTIVE,
+      },
+    });
+
+    if (!subscription) {
+      throw new BadRequestException('No active subscription found.');
+    }
+
+    const limits = subscription.limits as unknown as PlanLimits;
+
+    if (!limits.isLogExportAvailable) {
+      throw new BadRequestException(
+        'Log export is not available for this plan.',
+      );
+    }
+
+    if (limits.auditLogRetentionDays) {
+      const requestedDays =
+        new Date(query.endDate || Date.now()).getTime() -
+        new Date(query.startDate || 0).getTime();
+
+      if (requestedDays > limits.auditLogRetentionDays * 24 * 60 * 60 * 1000) {
+        throw new BadRequestException(
+          'Requested date range is greater than allowed audit log retention days.',
+        );
+      }
+    }
+
+    const where: any = {};
+    if (orgId) where.organizationId = orgId;
+
+    if (query.startDate || query.endDate) {
+      where.createdAt = {
+        gte: new Date(query.startDate || 0),
+        lte: new Date(query.endDate || Date.now()),
+      };
+    }
+
     if (!userId) throw new BadRequestException('User ID is required');
     if (!orgId) throw new BadRequestException('Organization ID is required');
 
@@ -113,9 +190,7 @@ export class AuditLogsService {
     if (!user) throw new BadRequestException('User not found');
 
     const logs = await this.prismaService.auditLog.findMany({
-      where: {
-        organizationId: orgId,
-      },
+      where,
       include: {
         user: {
           select: {
@@ -129,7 +204,7 @@ export class AuditLogsService {
 
     const pdf = this.pdfService.generateAuditLogsPdf(logs, res, {
       exportedBy: user.name,
-      dateRange: query.dateRange.replaceAll('-', ' '),
+      dateRange: `${new Date(query.startDate || 0).toLocaleDateString()} - ${new Date(query.endDate || Date.now()).toLocaleDateString()}`,
     });
 
     return pdf;
