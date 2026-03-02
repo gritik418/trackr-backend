@@ -38,7 +38,9 @@ export class AuditLogsService {
     });
   }
 
-  async getLogs(params: GetAuditLogsDto) {
+  async getLogs(
+    params: GetAuditLogsDto & { orgId: string; workspaceId: string | null },
+  ) {
     const {
       orgId,
       workspaceId,
@@ -64,8 +66,6 @@ export class AuditLogsService {
     if (entityId) where.entityId = entityId;
     if (search) {
       where.OR = [
-        { action: { contains: search, mode: 'insensitive' } },
-        { entityType: { contains: search, mode: 'insensitive' } },
         { user: { name: { contains: search, mode: 'insensitive' } } },
         { user: { email: { contains: search, mode: 'insensitive' } } },
       ];
@@ -84,7 +84,13 @@ export class AuditLogsService {
 
     const limits = subscription.limits as unknown as PlanLimits;
 
-    if (limits.auditLogRetentionDays) {
+    if (limits.auditLogRetentionDays === null) {
+      throw new BadRequestException(
+        'Audit log retention is not available for this plan.',
+      );
+    }
+
+    if (limits.auditLogRetentionDays && startDate && endDate) {
       const requestedDays =
         new Date(endDate || Date.now()).getTime() -
         new Date(startDate || 0).getTime();
@@ -95,15 +101,17 @@ export class AuditLogsService {
       }
     }
 
-    if (startDate || endDate) {
-      where.createdAt = {
-        gte: new Date(startDate || 0),
-        lte: new Date(endDate || Date.now()),
-      };
-    }
+    where.createdAt = {
+      gte: new Date(
+        startDate ||
+          Date.now() - limits.auditLogRetentionDays * 24 * 60 * 60 * 1000,
+      ),
+      lte: new Date(endDate || Date.now()),
+    };
 
     const [logs, total] = await Promise.all([
       this.prismaService.auditLog.findMany({
+        where,
         take: limit,
         skip,
         orderBy: { createdAt: 'desc' },
@@ -157,7 +165,13 @@ export class AuditLogsService {
       );
     }
 
-    if (limits.auditLogRetentionDays) {
+    if (limits.auditLogRetentionDays === null) {
+      throw new BadRequestException(
+        'Audit log retention is not available for this plan.',
+      );
+    }
+
+    if (limits.auditLogRetentionDays && query.startDate && query.endDate) {
       const requestedDays =
         new Date(query.endDate || Date.now()).getTime() -
         new Date(query.startDate || 0).getTime();
@@ -174,7 +188,10 @@ export class AuditLogsService {
 
     if (query.startDate || query.endDate) {
       where.createdAt = {
-        gte: new Date(query.startDate || 0),
+        gte: new Date(
+          query.startDate ||
+            Date.now() - limits.auditLogRetentionDays * 24 * 60 * 60 * 1000,
+        ),
         lte: new Date(query.endDate || Date.now()),
       };
     }

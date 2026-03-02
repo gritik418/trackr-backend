@@ -36,6 +36,7 @@ export class AuditLogsController {
     const orgId = req.params.orgId as string;
     return this.auditLogsService.getLogs({
       orgId,
+      workspaceId: null,
       ...query,
     });
   }
