@@ -199,7 +199,7 @@ const plans: PlanCreateInput[] = [
       maxTasksPerProject: null,
       maxMembersPerOrg: 15,
       auditLogRetentionDays: 90,
-      isLogExportAvailable: false,
+      isLogExportAvailable: true,
     },
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -207,8 +207,6 @@ const plans: PlanCreateInput[] = [
 ];
 
 export async function seedPlans(prisma: PrismaClient) {
-  await prisma.plan.deleteMany();
-
   for (const plan of plans) {
     const updateInput: PlanUpdateInput = {
       ...plan,

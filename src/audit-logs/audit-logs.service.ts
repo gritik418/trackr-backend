@@ -90,10 +90,20 @@ export class AuditLogsService {
       );
     }
 
-    if (limits.auditLogRetentionDays && startDate && endDate) {
+    const effectiveStartDate = startDate
+      ? new Date(startDate)
+      : new Date(
+          Date.now() - limits.auditLogRetentionDays * 24 * 60 * 60 * 1000,
+        );
+    const effectiveEndDate = endDate
+      ? new Date(endDate)
+      : new Date(Date.now() + 2000 * 60);
+
+    if (limits.auditLogRetentionDays) {
       const requestedDays =
-        new Date(endDate || Date.now()).getTime() -
-        new Date(startDate || 0).getTime();
+        new Date(effectiveEndDate).getTime() -
+        new Date(effectiveStartDate).getTime();
+
       if (requestedDays > limits.auditLogRetentionDays * 24 * 60 * 60 * 1000) {
         throw new BadRequestException(
           'Requested date range is greater than allowed audit log retention days.',
@@ -102,11 +112,8 @@ export class AuditLogsService {
     }
 
     where.createdAt = {
-      gte: new Date(
-        startDate ||
-          Date.now() - limits.auditLogRetentionDays * 24 * 60 * 60 * 1000,
-      ),
-      lte: new Date(endDate || Date.now()),
+      gte: effectiveStartDate,
+      lte: effectiveEndDate,
     };
 
     const [logs, total] = await Promise.all([
@@ -146,6 +153,17 @@ export class AuditLogsService {
   ) {
     const userId = req.user?.id;
 
+    if (!userId) throw new BadRequestException('User ID is required');
+    if (!orgId) throw new BadRequestException('Organization ID is required');
+
+    const org = await this.prismaService.organization.findUnique({
+      where: {
+        id: orgId,
+      },
+    });
+
+    if (!org) throw new BadRequestException('Organization not found');
+
     const subscription = await this.prismaService.subscription.findFirst({
       where: {
         orgId,
@@ -171,10 +189,19 @@ export class AuditLogsService {
       );
     }
 
-    if (limits.auditLogRetentionDays && query.startDate && query.endDate) {
+    const effectiveStartDate = query.startDate
+      ? new Date(query.startDate)
+      : new Date(
+          Date.now() - limits.auditLogRetentionDays * 24 * 60 * 60 * 1000,
+        );
+    const effectiveEndDate = query.endDate
+      ? new Date(query.endDate)
+      : new Date(Date.now() + 2000 * 60);
+
+    if (limits.auditLogRetentionDays) {
       const requestedDays =
-        new Date(query.endDate || Date.now()).getTime() -
-        new Date(query.startDate || 0).getTime();
+        new Date(effectiveEndDate).getTime() -
+        new Date(effectiveStartDate).getTime();
 
       if (requestedDays > limits.auditLogRetentionDays * 24 * 60 * 60 * 1000) {
         throw new BadRequestException(
@@ -186,15 +213,10 @@ export class AuditLogsService {
     const where: any = {};
     if (orgId) where.organizationId = orgId;
 
-    if (query.startDate || query.endDate) {
-      where.createdAt = {
-        gte: new Date(
-          query.startDate ||
-            Date.now() - limits.auditLogRetentionDays * 24 * 60 * 60 * 1000,
-        ),
-        lte: new Date(query.endDate || Date.now()),
-      };
-    }
+    where.createdAt = {
+      gte: effectiveStartDate,
+      lte: effectiveEndDate,
+    };
 
     if (!userId) throw new BadRequestException('User ID is required');
     if (!orgId) throw new BadRequestException('Organization ID is required');
@@ -219,11 +241,19 @@ export class AuditLogsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const pdf = this.pdfService.generateAuditLogsPdf(logs, res, {
-      exportedBy: user.name,
-      dateRange: `${new Date(query.startDate || 0).toLocaleDateString()} - ${new Date(query.endDate || Date.now()).toLocaleDateString()}`,
-    });
-
-    return pdf;
+    await this.pdfService.generateAuditLogsPdf(
+      logs,
+      {
+        name: org.name,
+        contactEmail: org.contactEmail || '',
+        websiteUrl: org.websiteUrl,
+        logoUrl: org.logoUrl,
+      },
+      res,
+      {
+        exportedBy: user.name,
+        dateRange: `${effectiveStartDate.toLocaleDateString()} - ${effectiveEndDate.toLocaleDateString()}`,
+      },
+    );
   }
 }
