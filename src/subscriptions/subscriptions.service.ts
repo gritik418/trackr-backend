@@ -175,6 +175,9 @@ export class SubscriptionsService {
       orderBy: {
         createdAt: 'desc',
       },
+      include: {
+        plan: true,
+      },
     });
 
     return {
