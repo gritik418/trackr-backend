@@ -22,6 +22,7 @@ import {
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { ORG_INVITE_EXPIRY_MS } from 'src/common/constants/expiration.constants';
 import { OrganizationInvite } from 'generated/prisma/browser';
+import { GetOrgInvitesDto } from './dto/get-org-members.schema';
 
 @Injectable()
 export class OrgInvitesService {
@@ -143,7 +144,7 @@ export class OrgInvitesService {
     };
   }
 
-  async getOrgInvites(orgId: string, req: Request, status?: InviteStatus) {
+  async getOrgInvites(orgId: string, req: Request, query: GetOrgInvitesDto) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
     if (!orgId) throw new BadRequestException('Organization ID is required');
@@ -157,17 +158,28 @@ export class OrgInvitesService {
       throw new NotFoundException('Organization not found');
     }
 
+    let where: Record<string, string | object> = {
+      organizationId: orgId,
+    };
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
     const invites = await this.prismaService.organizationInvite.findMany({
-      where: {
-        organizationId: orgId,
-        status: status,
-      },
+      where,
+      take: query.limit,
+      skip: (query.page - 1) * query.limit,
       include: {
         invitedBy: true,
       },
       orderBy: {
         createdAt: 'desc',
       },
+    });
+
+    const total = await this.prismaService.organizationInvite.count({
+      where,
     });
 
     const sanitizedInvites = invites.map((invite) => ({
@@ -179,7 +191,12 @@ export class OrgInvitesService {
       success: true,
       message: 'Invitations fetched successfully',
       invitations: sanitizedInvites,
-      total: sanitizedInvites.length,
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total,
+        totalPages: Math.ceil(total / query.limit),
+      },
     };
   }
 

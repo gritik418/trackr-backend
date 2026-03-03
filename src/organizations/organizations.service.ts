@@ -252,8 +252,14 @@ export class OrganizationsService {
 
     const members = await this.prismaService.organizationMember.findMany({
       where,
+      take: query.limit,
+      skip: (query.page - 1) * query.limit,
       include: { user: true },
       orderBy: { joinedAt: 'asc' },
+    });
+
+    const total = await this.prismaService.organizationMember.count({
+      where,
     });
 
     const sanitizedMembers = members.map((member) => ({
@@ -268,8 +274,8 @@ export class OrganizationsService {
       pagination: {
         page: query.page,
         limit: query.limit,
-        total: sanitizedMembers.length,
-        totalPages: Math.ceil(sanitizedMembers.length / query.limit),
+        total,
+        totalPages: Math.ceil(total / query.limit),
       },
     };
   }

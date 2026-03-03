@@ -27,6 +27,10 @@ import {
   acceptOrgInviteSchema,
 } from './dto/accept-organization-invite.schema';
 import { OrgInvitesService } from './org-invites.service';
+import {
+  GetOrgInvitesDto,
+  getOrgInvitesSchema,
+} from './dto/get-org-members.schema';
 
 @UseGuards(AuthGuard)
 @Controller('organizations/:orgId/invites')
@@ -50,12 +54,13 @@ export class OrgInvitesController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(OrgRoleGuard)
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
+  @UsePipes(new ZodValidationPipe(getOrgInvitesSchema))
   getInvites(
     @Param('orgId') orgId: string,
     @Req() req: Request,
-    @Query('status') status?: InviteStatus,
+    @Query() query: GetOrgInvitesDto,
   ) {
-    return this.orgInvitesService.getOrgInvites(orgId, req, status);
+    return this.orgInvitesService.getOrgInvites(orgId, req, query);
   }
 
   @Delete('/:inviteId')
