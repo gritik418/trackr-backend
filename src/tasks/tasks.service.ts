@@ -496,7 +496,15 @@ export class TasksService {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const { userId: assigneeId } = data;
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const { userIds: assigneeIds } = data;
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
@@ -547,19 +555,27 @@ export class TasksService {
           );
         }
 
-        const assigneeMember =
-          await this.prismaService.workspaceMember.findUnique({
-            where: {
-              userId_workspaceId: {
-                userId: assigneeId,
-                workspaceId: project.workspaceId,
-              },
-            },
-          });
+        const validatedAssigneeIds: string[] = [];
 
-        if (!assigneeMember) {
+        for (const assigneeId of assigneeIds) {
+          const assigneeMember =
+            await this.prismaService.workspaceMember.findUnique({
+              where: {
+                userId_workspaceId: {
+                  userId: assigneeId,
+                  workspaceId: project.workspaceId,
+                },
+              },
+            });
+
+          if (assigneeMember) {
+            validatedAssigneeIds.push(assigneeId);
+          }
+        }
+
+        if (validatedAssigneeIds.length !== assigneeIds.length) {
           throw new BadRequestException(
-            'Assignee is not a member of this workspace',
+            'One or more assignees are not members of this workspace.',
           );
         }
       } else {
@@ -574,26 +590,32 @@ export class TasksService {
           },
         );
 
-        if (!projectMember) {
+        if (
+          !projectMember &&
+          workspaceMember?.role !== WorkspaceRole.OWNER &&
+          workspaceMember?.role !== WorkspaceRole.ADMIN
+        ) {
           throw new UnauthorizedException(
             'You are not authorized to assign tasks in this project',
           );
         }
 
-        const assigneeProjectMember =
-          await this.prismaService.projectMember.findUnique({
-            where: {
-              projectId_userId: {
-                projectId,
-                userId: assigneeId,
+        for (const assigneeId of assigneeIds) {
+          const assigneeProjectMember =
+            await this.prismaService.projectMember.findUnique({
+              where: {
+                projectId_userId: {
+                  projectId,
+                  userId: assigneeId,
+                },
               },
-            },
-          });
+            });
 
-        if (!assigneeProjectMember) {
-          throw new BadRequestException(
-            'Assignee is not a member of this project',
-          );
+          if (!assigneeProjectMember) {
+            throw new BadRequestException(
+              'One or more assignees are not members of this project.',
+            );
+          }
         }
       }
     }
@@ -602,7 +624,7 @@ export class TasksService {
       where: { id: taskId },
       data: {
         assignees: {
-          connect: { id: assigneeId },
+          set: assigneeIds.map((id) => ({ id })),
         },
       },
       include: {
@@ -626,7 +648,16 @@ export class TasksService {
       organizationId: project.workspace.organizationId,
       workspaceId: project.workspaceId,
       userId,
-      details: { assigneeId },
+      details: {
+        taskId: taskId,
+        assigneeIds,
+        assignedBy: {
+          userId,
+          name: user?.name,
+          email: user?.email,
+          avatarUrl: user?.avatarUrl,
+        },
+      },
       ipAddress: req.ip as string,
       userAgent: req.headers['user-agent'] as string,
     });

@@ -39,6 +39,7 @@ export class TaskGuard implements CanActivate {
     const projectId = task.projectId;
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
+      include: { workspace: { select: { organizationId: true } } },
     });
 
     if (!project) {
@@ -46,6 +47,37 @@ export class TaskGuard implements CanActivate {
     }
 
     if (project.nature === ProjectNature.PRIVATE) {
+      const organization = await this.prismaService.organization.findUnique({
+        where: { id: project.workspace.organizationId },
+      });
+
+      if (!organization) {
+        throw new NotFoundException('Organization not found');
+      }
+
+      const organizationMember =
+        await this.prismaService.organizationMember.findUnique({
+          where: {
+            userId_organizationId: {
+              userId,
+              organizationId: organization.id,
+            },
+          },
+        });
+
+      if (!organizationMember) {
+        throw new UnauthorizedException(
+          'You are not a member of this organization',
+        );
+      }
+
+      if (
+        organizationMember.role === 'OWNER' ||
+        organizationMember.role === 'ADMIN'
+      ) {
+        return true;
+      }
+
       const projectMember = await this.prismaService.projectMember.findUnique({
         where: {
           projectId_userId: {
