@@ -138,10 +138,14 @@ export class AuditLogsService {
 
     return {
       success: true,
+      message: 'Audit logs fetched successfully',
       logs,
-      total,
-      limit,
-      page,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
