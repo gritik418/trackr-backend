@@ -13,6 +13,7 @@ import { UpdateOrganizationDto } from './dto/update-organization.schema';
 import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
+import { GetOrgMembersDto } from './dto/get-org-members.schema';
 
 @Injectable()
 export class OrganizationsService {
@@ -234,12 +235,23 @@ export class OrganizationsService {
     };
   }
 
-  async getMembers(orgId: string, req: Request) {
+  async getMembers(orgId: string, query: GetOrgMembersDto, req: Request) {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
     if (!orgId) throw new BadRequestException('Organization ID is required');
 
+    let where: Record<string, string | object> = {
+      organizationId: orgId,
+    };
+
+    if (query.search) {
+      where.OR = [
+        { user: { name: { contains: query.search, mode: 'insensitive' } } },
+        { user: { email: { contains: query.search, mode: 'insensitive' } } },
+      ];
+    }
+
     const members = await this.prismaService.organizationMember.findMany({
-      where: { organizationId: orgId },
+      where,
       include: { user: true },
       orderBy: { joinedAt: 'asc' },
     });
@@ -253,6 +265,12 @@ export class OrganizationsService {
       success: true,
       message: 'Members retrieved successfully.',
       members: sanitizedMembers,
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total: sanitizedMembers.length,
+        totalPages: Math.ceil(sanitizedMembers.length / query.limit),
+      },
     };
   }
 

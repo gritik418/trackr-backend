@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   UsePipes,
@@ -28,6 +29,10 @@ import { OrgRole } from 'generated/prisma/enums';
 import updateMemberRoleSchema, {
   UpdateMemberRoleDto,
 } from './dto/update-member-role.schema';
+import {
+  GetOrgMembersDto,
+  getOrgMembersSchema,
+} from './dto/get-org-members.schema';
 
 @UseGuards(AuthGuard)
 @Controller('organizations')
@@ -86,8 +91,13 @@ export class OrganizationsController {
   @HttpCode(HttpStatus.OK)
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN, OrgRole.MEMBER)
   @UseGuards(OrgRoleGuard)
-  getMembers(@Param('orgId') orgId: string, @Req() req: Request) {
-    return this.orgrganizationService.getMembers(orgId, req);
+  @UsePipes(new ZodValidationPipe(getOrgMembersSchema))
+  getMembers(
+    @Param('orgId') orgId: string,
+    @Query() query: GetOrgMembersDto,
+    @Req() req: Request,
+  ) {
+    return this.orgrganizationService.getMembers(orgId, query, req);
   }
 
   @Delete('/:orgId')
