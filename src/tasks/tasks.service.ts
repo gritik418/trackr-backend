@@ -323,16 +323,15 @@ export class TasksService {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const {
-      title,
-      description,
-      status,
-      priority,
-      deadline,
-      categoryId,
-      tag,
-      assignedToIds,
-    } = data;
+    const updatedFields: Record<string, string | Date> = {};
+    const assignedToIds = data.assignedToIds;
+    if (data.title) updatedFields.title = data.title;
+    if (data.description) updatedFields.description = data.description;
+    if (data.status) updatedFields.status = data.status;
+    if (data.priority) updatedFields.priority = data.priority;
+    if (data.deadline) updatedFields.deadline = data.deadline;
+    if (data.categoryId) updatedFields.categoryId = data.categoryId;
+    if (data.tag) updatedFields.tag = data.tag;
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
@@ -409,7 +408,7 @@ export class TasksService {
         const assignedWorkspaceMembers =
           await this.prismaService.workspaceMember.findMany({
             where: {
-              userId: { in: assignedToIds },
+              userId: { in: data.assignedToIds },
               workspaceId,
             },
             select: { userId: true },
@@ -441,13 +440,7 @@ export class TasksService {
     const updatedTask = await this.prismaService.task.update({
       where: { id: taskId },
       data: {
-        title,
-        description,
-        status,
-        priority,
-        deadline,
-        categoryId,
-        tag,
+        ...updatedFields,
         assignees: assignedToIds
           ? {
               set: assignedToIds.map((id) => ({ id })),
@@ -475,7 +468,13 @@ export class TasksService {
       organizationId: project.workspace.organizationId,
       workspaceId,
       userId,
-      details: { title, status, priority, tag },
+      details: {
+        ...updatedFields,
+        assignedToIds:
+          assignedToIds?.length && assignedToIds.length > 0
+            ? assignedToIds
+            : undefined,
+      },
       ipAddress: req.ip as string,
       userAgent: req.headers['user-agent'] as string,
     });
