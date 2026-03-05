@@ -10,7 +10,7 @@ import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
 import { AssignTaskDto } from './dto/assign-task.schema';
 import { CreateTaskDto } from './dto/create-task.schema';
-import { GetTasksDto } from './dto/get-tasks.schema';
+import { GetTasksDto, TaskStatusWithAll } from './dto/get-tasks.schema';
 import { UpdateTaskDto } from './dto/update-task.schema';
 import {
   ProjectNature,
@@ -226,7 +226,22 @@ export class TasksService {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const { status, priority, assignedToId, tag } = query;
+    const where: Record<string, any> = {};
+    const { status, priority, tag, page, limit, sortBy, sortOrder, search } =
+      query;
+
+    if (status && status !== TaskStatusWithAll.ALL) where.status = status;
+    if (priority) where.priority = priority;
+    if (tag) where.tag = tag;
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const orderBy: Record<string, any> = {};
+    if (sortBy) orderBy[sortBy] = sortOrder;
 
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
@@ -277,19 +292,9 @@ export class TasksService {
     }
 
     const tasks = await this.prismaService.task.findMany({
-      where: {
-        projectId,
-        status,
-        priority,
-        tag,
-        assignees: assignedToId
-          ? {
-              some: {
-                id: assignedToId,
-              },
-            }
-          : undefined,
-      },
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
       include: {
         assignees: {
           select: {
@@ -302,15 +307,23 @@ export class TasksService {
         category: true,
         links: true,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy,
+    });
+
+    const totalTasks = await this.prismaService.task.count({
+      where,
     });
 
     return {
       success: true,
       message: 'Tasks fetched successfully',
       tasks,
+      pagination: {
+        page,
+        limit,
+        total: totalTasks,
+        totalPages: Math.ceil(totalTasks / limit),
+      },
     };
   }
 
@@ -674,6 +687,14 @@ export class TasksService {
 
     const { status, priority, tag } = query;
 
+    const where: Record<string, any> = {};
+
+    if (status && status !== TaskStatusWithAll.ALL) where.status = status;
+    if (priority) where.priority = priority;
+    if (tag) where.tag = tag;
+    where.assignees = { some: { id: userId } };
+    where.projectId = projectId;
+
     const project = await this.prismaService.project.findUnique({
       where: { id: projectId },
       include: { workspace: true },
@@ -723,17 +744,7 @@ export class TasksService {
     }
 
     const tasks = await this.prismaService.task.findMany({
-      where: {
-        projectId,
-        status,
-        priority,
-        tag,
-        assignees: {
-          some: {
-            id: userId,
-          },
-        },
-      },
+      where,
       include: {
         assignees: {
           select: {
