@@ -228,7 +228,9 @@ model Task {
   categoryId  String?
   createdById String
   createdAt   DateTime @default(now())
+  completedAt   DateTime?
   updatedAt   DateTime @updatedAt
+
 
   attachments TaskAttachment[]
   links       TaskLink[]

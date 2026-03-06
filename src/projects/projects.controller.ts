@@ -62,6 +62,20 @@ export class ProjectsController {
     return this.projectsService.getProjects(workspaceId, req);
   }
 
+  @Get('/:projectId/overview')
+  @HttpCode(HttpStatus.OK)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  getProjectOverview(
+    @Param('projectId') projectId: string,
+    @Req() req: Request,
+  ) {
+    return this.projectsService.projectOverview(projectId, req);
+  }
+
   @Get('/:projectId')
   @HttpCode(HttpStatus.OK)
   @WorkspaceRoles(

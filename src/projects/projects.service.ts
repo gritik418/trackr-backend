@@ -6,13 +6,24 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { ProjectNature, ProjectRole } from 'generated/prisma/enums';
+import {
+  AuditAction,
+  AuditEntityType,
+  ProjectNature,
+  ProjectRole,
+  TaskStatus,
+  WorkspaceRole,
+} from 'generated/prisma/enums';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AddProjectMemberDto } from './dto/add-member.schema';
 import { CreateProjectDto } from './dto/create-project.schema';
 import { UpdateProjectDto } from './dto/update-project.schema';
-import { AddProjectMemberDto } from './dto/add-member.schema';
-import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
-import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
+import {
+  ProjectOverview,
+  ProjectTaskStatusCount,
+  ProjectVelocity,
+} from './interfaces/project-overview.interface';
 
 @Injectable()
 export class ProjectsService {
@@ -667,6 +678,190 @@ export class ProjectsService {
     return {
       success: true,
       message: 'Member removed from project successfully',
+    };
+  }
+
+  async projectOverview(projectId: string, req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const project = await this.prismaService.project.findUnique({
+      where: {
+        id: projectId,
+      },
+      select: {
+        id: true,
+        nature: true,
+        name: true,
+        description: true,
+        status: true,
+        ownerId: true,
+        createdAt: true,
+        updatedAt: true,
+        workspace: {
+          include: { members: { where: { userId } } },
+        },
+        members: { where: { userId } },
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const isWorkspaceAdmin =
+      project.workspace.members[0].role === WorkspaceRole.ADMIN ||
+      project.workspace.members[0].role === WorkspaceRole.OWNER;
+
+    const isProjectAdmin =
+      project.members[0].role === ProjectRole.ADMIN ||
+      project.members[0].role === ProjectRole.OWNER;
+
+    const isProjectMember = project.members[0].userId === userId;
+
+    if (
+      project.nature !== ProjectNature.PUBLIC &&
+      !isWorkspaceAdmin &&
+      !isProjectMember
+    ) {
+      throw new UnauthorizedException('You are not a member of this project');
+    }
+
+    const membersCount = await this.prismaService.projectMember.count({
+      where: {
+        projectId,
+      },
+    });
+
+    const overview: ProjectOverview = {
+      id: project.id,
+      name: project.name,
+      description: project.description || '',
+      nature: project.nature,
+      status: project.status,
+      ownerId: project.ownerId,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+      membersCount,
+    };
+
+    if (isWorkspaceAdmin || isProjectAdmin) {
+      overview.velocity = await this.calculateProjectVelocity(projectId);
+      overview.taskStatusCount = await this.getTaskStatusCount(projectId);
+    }
+
+    return {
+      success: true,
+      message: 'Project overview fetched successfully',
+      overview,
+    };
+  }
+
+  private async calculateProjectVelocity(
+    projectId: string,
+  ): Promise<ProjectVelocity> {
+    const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 6);
+
+    const tasks = await this.prismaService.task.findMany({
+      where: { projectId },
+      select: {
+        status: true,
+        completedAt: true,
+      },
+    });
+    const totalTasks = tasks.length;
+
+    const completedTasks = tasks.filter(
+      (t) => t.status === TaskStatus.DONE,
+    ).length;
+
+    const completionRate =
+      totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+    const last7Days: { date: string; completed: number }[] = [];
+
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(sevenDaysAgo);
+      day.setDate(sevenDaysAgo.getDate() + i);
+
+      const nextDay = new Date(day);
+      nextDay.setDate(day.getDate() + 1);
+
+      const completed = tasks.filter(
+        (t) =>
+          t.completedAt &&
+          t.completedAt >= day &&
+          t.completedAt < nextDay &&
+          t.status === TaskStatus.DONE,
+      ).length;
+
+      last7Days.push({
+        date: day.toISOString().split('T')[0],
+        completed,
+      });
+    }
+
+    const weeklyCompleted = last7Days.reduce(
+      (sum, day) => sum + day.completed,
+      0,
+    );
+    return {
+      completionRate,
+      last7Days,
+      weeklyCompleted,
+    };
+  }
+
+  private async getTaskStatusCount(
+    projectId: string,
+  ): Promise<ProjectTaskStatusCount> {
+    const [
+      totalTasks,
+      todoTasks,
+      inProgressTasks,
+      inReviewTasks,
+      completedTasks,
+      blockedTasks,
+      canceledTasks,
+      onHoldTasks,
+    ] = await Promise.all([
+      this.prismaService.task.count({
+        where: { projectId },
+      }),
+      this.prismaService.task.count({
+        where: { projectId, status: TaskStatus.TODO },
+      }),
+      this.prismaService.task.count({
+        where: { projectId, status: TaskStatus.IN_PROGRESS },
+      }),
+      this.prismaService.task.count({
+        where: { projectId, status: TaskStatus.IN_REVIEW },
+      }),
+      this.prismaService.task.count({
+        where: { projectId, status: TaskStatus.DONE },
+      }),
+      this.prismaService.task.count({
+        where: { projectId, status: TaskStatus.BLOCKED },
+      }),
+      this.prismaService.task.count({
+        where: { projectId, status: TaskStatus.CANCELED },
+      }),
+      this.prismaService.task.count({
+        where: { projectId, status: TaskStatus.ON_HOLD },
+      }),
+    ]);
+
+    return {
+      total: totalTasks,
+      todo: todoTasks,
+      inProgress: inProgressTasks,
+      inReview: inReviewTasks,
+      done: completedTasks,
+      blocked: blockedTasks,
+      canceled: canceledTasks,
+      onHold: onHoldTasks,
     };
   }
 }

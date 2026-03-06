@@ -10,7 +10,7 @@ import { UpdateWorkspaceDto } from './dto/update-workspace.schema';
 import { AddMemberDto } from './dto/add-member.schema';
 import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 import { Request } from 'express';
-import { GetTasksDto } from 'src/tasks/dto/get-tasks.schema';
+import { GetTasksDto, TaskStatusWithAll } from 'src/tasks/dto/get-tasks.schema';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
@@ -738,7 +738,7 @@ export class WorkspacesService {
     const tasks = await this.prismaService.task.findMany({
       where: {
         workspaceId,
-        status,
+        status: status === TaskStatusWithAll.ALL ? undefined : status,
         priority,
         tag,
         assignees: { some: { id: req.user.id } },
