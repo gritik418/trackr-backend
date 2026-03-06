@@ -221,9 +221,14 @@ export class WorkspacesService {
 
     if (!workspace) throw new NotFoundException('Workspace not found.');
 
+    const user = workspace.members.find(
+      (member) => member.userId === req.user?.id,
+    );
+
     const sanitizedWorkspace = {
       ...workspace,
       owner: sanitizeUser(workspace.owner),
+      role: user?.role,
     };
 
     return {
@@ -270,9 +275,14 @@ export class WorkspacesService {
       throw new NotFoundException('Workspace not found.');
     }
 
+    const user = workspace.members.find(
+      (member) => member.userId === req.user?.id,
+    );
+
     const sanitizedWorkspace = {
       ...workspace,
       owner: sanitizeUser(workspace.owner),
+      role: user?.role,
     };
 
     return {

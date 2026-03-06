@@ -155,6 +155,12 @@ export class OrganizationsService {
     if (!org) throw new NotFoundException('Organization not found.');
 
     const user = org.members.find((member) => member.userId === req.user?.id);
+
+    if (!user)
+      throw new ForbiddenException(
+        'You are not a member of this organization.',
+      );
+
     const organization = {
       ...org,
       owner: sanitizeUser(org.owner),
