@@ -7,7 +7,11 @@ import {
 import { Request } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
-import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
+import {
+  AuditAction,
+  AuditEntityType,
+  TaskStatus,
+} from 'generated/prisma/enums';
 import { AssignTaskDto } from './dto/assign-task.schema';
 import { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto, TaskStatusWithAll } from './dto/get-tasks.schema';
@@ -17,6 +21,11 @@ import {
   ProjectRole,
   WorkspaceRole,
 } from 'generated/prisma/enums';
+import {
+  TaskCreateInput,
+  TaskCreateManyInput,
+  TaskUncheckedCreateInput,
+} from 'generated/prisma/models';
 
 @Injectable()
 export class TasksService {
@@ -166,25 +175,31 @@ export class TasksService {
       }
     }
 
-    const task = await this.prismaService.task.create({
-      data: {
-        title,
-        description,
-        status,
-        priority,
-        deadline,
-        workspaceId,
-        projectId,
-        categoryId,
-        tag,
-        createdById: userId,
-        assignees: {
-          connect: assignedToIds?.map((id) => ({ id })) || [],
-        },
-        links: {
-          create: links,
-        },
+    const taskData: TaskUncheckedCreateInput = {
+      title,
+      description,
+      status,
+      priority,
+      deadline,
+      workspaceId,
+      projectId,
+      categoryId,
+      tag,
+      createdById: userId,
+      assignees: {
+        connect: assignedToIds?.map((id) => ({ id })) || [],
       },
+      links: {
+        create: links,
+      },
+    };
+
+    if (status === TaskStatus.DONE) {
+      taskData.completedAt = new Date();
+    }
+
+    const task = await this.prismaService.task.create({
+      data: taskData,
       include: {
         assignees: {
           select: {
@@ -316,7 +331,7 @@ export class TasksService {
 
     return {
       success: true,
-      message: 'Tasks fetched successfully',
+      message: 'Tasks fetched successfully.',
       tasks,
       pagination: {
         page,
@@ -341,6 +356,8 @@ export class TasksService {
     if (data.title) updatedFields.title = data.title;
     if (data.description) updatedFields.description = data.description;
     if (data.status) updatedFields.status = data.status;
+    if (data.status && data.status === TaskStatus.DONE)
+      updatedFields.completedAt = new Date();
     if (data.priority) updatedFields.priority = data.priority;
     if (data.deadline) updatedFields.deadline = data.deadline;
     if (data.categoryId) updatedFields.categoryId = data.categoryId;
