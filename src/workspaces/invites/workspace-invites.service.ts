@@ -408,6 +408,7 @@ export class WorkspaceInvitesService {
         where: { id: validInvite.id },
         data: {
           acceptedAt: new Date(),
+          status: 'ACCEPTED',
         },
       });
 

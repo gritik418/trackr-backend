@@ -1,9 +1,4 @@
-import {
-  ProjectNature,
-  ProjectRole,
-  ProjectStatus,
-  TaskStatus,
-} from 'generated/prisma/enums';
+import { ProjectNature, ProjectStatus } from 'generated/prisma/enums';
 
 export interface ProjectOverview {
   id: string;

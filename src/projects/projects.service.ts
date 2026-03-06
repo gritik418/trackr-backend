@@ -747,8 +747,8 @@ export class ProjectsService {
 
     if (isWorkspaceAdmin || isProjectAdmin) {
       overview.velocity = await this.calculateProjectVelocity(projectId);
-      overview.taskStatusCount = await this.getTaskStatusCount(projectId);
     }
+    overview.taskStatusCount = await this.getTaskStatusCount(projectId);
 
     return {
       success: true,
@@ -786,6 +786,8 @@ export class ProjectsService {
       const day = new Date(sevenDaysAgo);
       day.setDate(sevenDaysAgo.getDate() + i);
 
+      day.setHours(0, 0, 0, 0);
+
       const nextDay = new Date(day);
       nextDay.setDate(day.getDate() + 1);
 
@@ -798,7 +800,7 @@ export class ProjectsService {
       ).length;
 
       last7Days.push({
-        date: day.toISOString().split('T')[0],
+        date: day.toLocaleDateString('en-CA'),
         completed,
       });
     }
