@@ -219,8 +219,18 @@ export class ProjectsService {
             },
           },
         },
+        members: true,
       },
     });
+
+    const user = project?.members.find(
+      (member) => member.userId === req.user?.id,
+    );
+
+    const sanitizedProject = {
+      ...project,
+      role: user?.role,
+    };
 
     if (!project) {
       throw new NotFoundException('Project not found');
@@ -248,7 +258,7 @@ export class ProjectsService {
     return {
       success: true,
       message: 'Project fetched successfully',
-      project,
+      project: sanitizedProject,
     };
   }
 
