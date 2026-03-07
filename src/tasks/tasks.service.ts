@@ -654,14 +654,13 @@ export class TasksService {
       userId,
       details: {
         taskId: taskId,
-        assignedTo: updatedTask.assignees.map((assignee) => {
-          if (!assigneeIds?.includes(assignee.id)) return;
-          return {
+        assignedTo: updatedTask.assignees
+          .filter((assignee) => assigneeIds?.includes(assignee.id))
+          .map((assignee) => ({
             id: assignee.id,
             name: assignee.name,
             email: assignee.email,
-          };
-        }),
+          })),
         assignedBy: {
           userId,
           name: user?.name,
@@ -800,14 +799,16 @@ export class TasksService {
       userId,
       details: {
         taskId: taskId,
-        unassignedFrom: updatedTask.assignees.map((assignee) => {
-          if (!assigneeIds?.includes(assignee.id)) return;
-          return {
-            id: assignee.id,
-            name: assignee.name,
-            email: assignee.email,
-          };
-        }),
+        unassignedFrom: (
+          await this.prismaService.user.findMany({
+            where: { id: { in: assigneeIds } },
+            select: { id: true, name: true, email: true },
+          })
+        ).map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+        })),
         unassignedBy: {
           userId,
           name: user?.name,
