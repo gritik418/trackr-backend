@@ -35,6 +35,7 @@ export class AuthGuard implements CanActivate {
     req.user = {
       email: verify.email,
       id: verify.id,
+      name: verify.name,
     };
     return true;
   }

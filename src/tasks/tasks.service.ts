@@ -225,6 +225,25 @@ export class TasksService {
         title: task.title,
         status: task.status,
         priority: task.priority,
+        assignees: task.assignees.map((assignee) => ({
+          id: assignee.id,
+          name: assignee.name,
+          email: assignee.email,
+        })),
+        category: task.category,
+        tag: task.tag,
+        links: task.links,
+        deadline: task.deadline,
+        description: task.description,
+        categoryId: task.categoryId,
+        createdById: {
+          id: userId,
+          name: req?.user?.name,
+          email: req?.user?.email,
+        },
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+        completedAt: task.completedAt,
       },
       ipAddress: req.ip as string,
       userAgent: req.headers['user-agent'] as string,
@@ -504,6 +523,11 @@ export class TasksService {
           assignedToIds?.length && assignedToIds.length > 0
             ? assignedToIds
             : undefined,
+        updatedBy: {
+          id: userId,
+          name: req?.user?.name,
+          email: req?.user?.email,
+        },
       },
       ipAddress: req.ip as string,
       userAgent: req.headers['user-agent'] as string,
