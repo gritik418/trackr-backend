@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
   UsePipes,
@@ -33,6 +34,7 @@ import { ProjectRoles } from './decorators/project-roles.decorator';
 import { ProjectRole, WorkspaceRole } from 'generated/prisma/enums';
 import { WorkspaceRoleGuard } from 'src/workspaces/guards/workspace-role.guard';
 import { WorkspaceRoles } from 'src/workspaces/decorators/workspace-roles.decorator';
+import { GetProjectsDto, getProjectsSchema } from './dto/get-projects.schema';
 
 @UseGuards(AuthGuard, WorkspaceRoleGuard)
 @Controller('workspaces/:workspaceId/projects')
@@ -53,13 +55,18 @@ export class ProjectsController {
 
   @Get('/')
   @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(getProjectsSchema))
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
   )
-  getProjects(@Param('workspaceId') workspaceId: string, @Req() req: Request) {
-    return this.projectsService.getProjects(workspaceId, req);
+  getProjects(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: Request,
+    @Query() query: GetProjectsDto,
+  ) {
+    return this.projectsService.getProjects(workspaceId, query, req);
   }
 
   @Get('/:projectId/overview')

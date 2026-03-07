@@ -25,6 +25,7 @@ import {
   ProjectVelocity,
 } from './interfaces/project-overview.interface';
 import { ProjectMember } from 'generated/prisma/browser';
+import { GetProjectsDto } from './dto/get-projects.schema';
 
 type ProjectStats = {
   nature: ProjectNature;
@@ -227,7 +228,7 @@ export class ProjectsService {
     });
   }
 
-  async getProjects(workspaceId: string, req: Request) {
+  async getProjects(workspaceId: string, query: GetProjectsDto, req: Request) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
@@ -269,24 +270,52 @@ export class ProjectsService {
       throw new UnauthorizedException('You are not a member of this workspace');
     }
 
-    const projects = await this.prismaService.project.findMany({
-      where: {
-        workspaceId,
-        ...(!isOrgAdminOrOwner && {
-          OR: [
-            {
-              members: {
-                some: {
-                  userId,
-                },
+    const { search, nature, status } = query;
+    const where: Record<string, any> = {
+      workspaceId,
+      ...(!isOrgAdminOrOwner && {
+        OR: [
+          {
+            members: {
+              some: {
+                userId,
               },
             },
-            {
-              nature: ProjectNature.PUBLIC,
-            },
-          ],
-        }),
-      },
+          },
+          {
+            nature: ProjectNature.PUBLIC,
+          },
+        ],
+      }),
+    };
+
+    if (query?.search) {
+      where.OR = [
+        {
+          name: {
+            contains: query.search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          description: {
+            contains: query.search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
+    if (query?.nature && query.nature !== 'ALL') {
+      where.nature = query.nature;
+    }
+
+    if (query?.status && query.status !== 'ALL') {
+      where.status = query.status;
+    }
+
+    const projects = await this.prismaService.project.findMany({
+      where,
     });
 
     let projectsWithStats: any[] = [];
