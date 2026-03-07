@@ -253,7 +253,7 @@ export class WorkspacesService {
           include: {
             members: {
               where: { userId: req.user.id },
-              select: { role: true },
+              select: { role: true, userId: true },
             },
           },
         },
@@ -279,10 +279,19 @@ export class WorkspacesService {
       (member) => member.userId === req.user?.id,
     );
 
+    const organizationMember = workspace.organization.members.find(
+      (member) => member.userId === req.user?.id,
+    );
+
+    if (!organizationMember) {
+      throw new NotFoundException('Organization not found.');
+    }
+
     const sanitizedWorkspace = {
       ...workspace,
       owner: sanitizeUser(workspace.owner),
       role: user?.role,
+      organizationRole: organizationMember?.role,
     };
 
     return {

@@ -844,9 +844,16 @@ export class ProjectsService {
         createdAt: true,
         updatedAt: true,
         workspace: {
-          include: { members: { where: { userId } } },
+          include: {
+            members: { where: { userId } },
+            organization: {
+              include: {
+                members: { where: { userId }, select: { role: true } },
+              },
+            },
+          },
         },
-        members: { where: { userId } },
+        members: { where: { userId }, select: { role: true, userId: true } },
       },
     });
 
@@ -854,19 +861,27 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
+    console.log(project.workspace.organization.members[0].role);
+    console.log(project.members);
+
+    const orgRole = project.workspace.organization.members[0].role;
+
     const isWorkspaceAdmin =
       project.workspace.members[0].role === WorkspaceRole.ADMIN ||
-      project.workspace.members[0].role === WorkspaceRole.OWNER;
+      project.workspace.members[0].role === WorkspaceRole.OWNER ||
+      orgRole === WorkspaceRole.ADMIN ||
+      orgRole === WorkspaceRole.OWNER;
 
     const isProjectAdmin =
-      project.members[0].role === ProjectRole.ADMIN ||
-      project.members[0].role === ProjectRole.OWNER;
+      project.members[0]?.role === ProjectRole.ADMIN ||
+      project.members[0]?.role === ProjectRole.OWNER;
 
-    const isProjectMember = project.members[0].userId === userId;
+    const isProjectMember = project.members[0]?.userId === userId;
 
     if (
       project.nature !== ProjectNature.PUBLIC &&
       !isWorkspaceAdmin &&
+      !isProjectAdmin &&
       !isProjectMember
     ) {
       throw new UnauthorizedException('You are not a member of this project');
