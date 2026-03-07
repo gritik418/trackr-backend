@@ -24,6 +24,14 @@ import {
   ProjectTaskStatusCount,
   ProjectVelocity,
 } from './interfaces/project-overview.interface';
+import { ProjectMember } from 'generated/prisma/browser';
+
+type ProjectStats = {
+  nature: ProjectNature;
+  members: ProjectMember[] | null;
+  membersCount: number;
+  completionPercentage: number;
+};
 
 @Injectable()
 export class ProjectsService {
@@ -31,6 +39,94 @@ export class ProjectsService {
     private readonly prismaService: PrismaService,
     private readonly auditLogsService: AuditLogsService,
   ) {}
+
+  private async getTaskStatusCount(
+    projectId: string,
+  ): Promise<ProjectTaskStatusCount> {
+    const counts = await this.prismaService.task.groupBy({
+      by: ['status'],
+      where: { projectId },
+      _count: { _all: true },
+    });
+
+    const statusMap = counts.reduce(
+      (acc, curr) => {
+        acc[curr.status] = curr._count._all;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    return {
+      total: counts.reduce((sum, curr) => sum + curr._count._all, 0),
+      todo: statusMap[TaskStatus.TODO] || 0,
+      inProgress: statusMap[TaskStatus.IN_PROGRESS] || 0,
+      inReview: statusMap[TaskStatus.IN_REVIEW] || 0,
+      done: statusMap[TaskStatus.DONE] || 0,
+      blocked: statusMap[TaskStatus.BLOCKED] || 0,
+      canceled: statusMap[TaskStatus.CANCELED] || 0,
+      onHold: statusMap[TaskStatus.ON_HOLD] || 0,
+    };
+  }
+
+  private async getProjectStats(
+    projectId: string,
+    projectNature: ProjectNature,
+  ): Promise<ProjectStats> {
+    if (projectNature === ProjectNature.PUBLIC) {
+      const [totalTasks, completedTasks] = await Promise.all([
+        this.prismaService.task.count({ where: { projectId } }),
+        this.prismaService.task.count({
+          where: { projectId, status: TaskStatus.DONE },
+        }),
+      ]);
+
+      const completionPercentage =
+        totalTasks === 0 ? 0 : (completedTasks / totalTasks) * 100;
+
+      return {
+        nature: ProjectNature.PUBLIC,
+        members: null,
+        membersCount: 0,
+        completionPercentage,
+      };
+    }
+    const [members, membersCount, totalTasks, completedTasks] =
+      await Promise.all([
+        this.prismaService.projectMember.findMany({
+          where: { projectId },
+          take: 3,
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        }),
+        this.prismaService.projectMember.count({
+          where: { projectId },
+        }),
+        this.prismaService.task.count({
+          where: { projectId },
+        }),
+        this.prismaService.task.count({
+          where: { projectId, status: TaskStatus.DONE },
+        }),
+      ]);
+
+    const completionPercentage =
+      totalTasks === 0 ? 0 : (completedTasks / totalTasks) * 100;
+
+    return {
+      members,
+      membersCount,
+      nature: ProjectNature.PRIVATE,
+      completionPercentage,
+    };
+  }
 
   private async isOrgAdmin(orgId: string, userId: string): Promise<boolean> {
     const orgMember = await this.prismaService.organizationMember.findUnique({
@@ -193,10 +289,20 @@ export class ProjectsService {
       },
     });
 
+    let projectsWithStats: any[] = [];
+
+    for (const project of projects) {
+      const stats = await this.getProjectStats(project.id, project.nature);
+      projectsWithStats.push({
+        ...project,
+        stats,
+      });
+    }
+
     return {
       success: true,
       message: 'Projects fetched successfully',
-      projects,
+      projects: projectsWithStats,
     };
   }
 
@@ -823,57 +929,6 @@ export class ProjectsService {
       completionRate,
       last7Days,
       weeklyCompleted,
-    };
-  }
-
-  private async getTaskStatusCount(
-    projectId: string,
-  ): Promise<ProjectTaskStatusCount> {
-    const [
-      totalTasks,
-      todoTasks,
-      inProgressTasks,
-      inReviewTasks,
-      completedTasks,
-      blockedTasks,
-      canceledTasks,
-      onHoldTasks,
-    ] = await Promise.all([
-      this.prismaService.task.count({
-        where: { projectId },
-      }),
-      this.prismaService.task.count({
-        where: { projectId, status: TaskStatus.TODO },
-      }),
-      this.prismaService.task.count({
-        where: { projectId, status: TaskStatus.IN_PROGRESS },
-      }),
-      this.prismaService.task.count({
-        where: { projectId, status: TaskStatus.IN_REVIEW },
-      }),
-      this.prismaService.task.count({
-        where: { projectId, status: TaskStatus.DONE },
-      }),
-      this.prismaService.task.count({
-        where: { projectId, status: TaskStatus.BLOCKED },
-      }),
-      this.prismaService.task.count({
-        where: { projectId, status: TaskStatus.CANCELED },
-      }),
-      this.prismaService.task.count({
-        where: { projectId, status: TaskStatus.ON_HOLD },
-      }),
-    ]);
-
-    return {
-      total: totalTasks,
-      todo: todoTasks,
-      inProgress: inProgressTasks,
-      inReview: inReviewTasks,
-      done: completedTasks,
-      blocked: blockedTasks,
-      canceled: canceledTasks,
-      onHold: onHoldTasks,
     };
   }
 }
