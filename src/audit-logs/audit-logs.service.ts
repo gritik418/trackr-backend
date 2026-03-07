@@ -95,9 +95,10 @@ export class AuditLogsService {
       : new Date(
           Date.now() - limits.auditLogRetentionDays * 24 * 60 * 60 * 1000,
         );
+
     const effectiveEndDate = endDate
       ? new Date(endDate)
-      : new Date(Date.now() + 2000 * 60);
+      : new Date(Date.now() + 20000 * 60);
 
     if (limits.auditLogRetentionDays) {
       const requestedDays =

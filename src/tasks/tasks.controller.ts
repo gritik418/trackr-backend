@@ -22,6 +22,10 @@ import { AssignTaskDto, assignTaskSchema } from './dto/assign-task.schema';
 import createTaskSchema, { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto, getTasksSchema } from './dto/get-tasks.schema';
 import { UpdateTaskDto, updateTaskSchema } from './dto/update-task.schema';
+import {
+  UnassignTaskDto,
+  unassignTaskSchema,
+} from './dto/unassign-task.schema';
 import { TasksService } from './tasks.service';
 
 @UseGuards(AuthGuard)
@@ -106,5 +110,19 @@ export class TasksController {
     @Req() req: Request,
   ) {
     return this.tasksService.assignTask(projectId, taskId, data, req);
+  }
+
+  @Post('/:taskId/unassign')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
+  @UsePipes(new ZodValidationPipe(unassignTaskSchema))
+  unassignTask(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Body() data: UnassignTaskDto,
+    @Req() req: Request,
+  ) {
+    return this.tasksService.unassignTask(projectId, taskId, data, req);
   }
 }

@@ -5,27 +5,22 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 import {
   AuditAction,
   AuditEntityType,
+  ProjectNature,
+  ProjectRole,
   TaskStatus,
+  WorkspaceRole,
 } from 'generated/prisma/enums';
+import { TaskUncheckedCreateInput } from 'generated/prisma/models';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { AssignTaskDto } from './dto/assign-task.schema';
 import { CreateTaskDto } from './dto/create-task.schema';
 import { GetTasksDto, TaskStatusWithAll } from './dto/get-tasks.schema';
+import { UnassignTaskDto } from './dto/unassign-task.schema';
 import { UpdateTaskDto } from './dto/update-task.schema';
-import {
-  ProjectNature,
-  ProjectRole,
-  WorkspaceRole,
-} from 'generated/prisma/enums';
-import {
-  TaskCreateInput,
-  TaskCreateManyInput,
-  TaskUncheckedCreateInput,
-} from 'generated/prisma/models';
 
 @Injectable()
 export class TasksService {
@@ -371,7 +366,6 @@ export class TasksService {
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
     const updatedFields: Record<string, string | Date> = {};
-    const assignedToIds = data.assignedToIds;
     if (data.title) updatedFields.title = data.title;
     if (data.description) updatedFields.description = data.description;
     if (data.status) updatedFields.status = data.status;
@@ -452,49 +446,10 @@ export class TasksService {
       }
     }
 
-    if (assignedToIds && assignedToIds.length > 0) {
-      if (project.nature === ProjectNature.PUBLIC) {
-        const assignedWorkspaceMembers =
-          await this.prismaService.workspaceMember.findMany({
-            where: {
-              userId: { in: data.assignedToIds },
-              workspaceId,
-            },
-            select: { userId: true },
-          });
-
-        if (assignedWorkspaceMembers.length !== assignedToIds.length) {
-          throw new BadRequestException(
-            'One or more assigned users are not members of this workspace',
-          );
-        }
-      } else {
-        const assignedProjectMembers =
-          await this.prismaService.projectMember.findMany({
-            where: {
-              projectId,
-              userId: { in: assignedToIds },
-            },
-            select: { userId: true },
-          });
-
-        if (assignedProjectMembers.length !== assignedToIds.length) {
-          throw new BadRequestException(
-            'One or more assigned users are not members of this project',
-          );
-        }
-      }
-    }
-
     const updatedTask = await this.prismaService.task.update({
       where: { id: taskId },
       data: {
         ...updatedFields,
-        assignees: assignedToIds
-          ? {
-              set: assignedToIds.map((id) => ({ id })),
-            }
-          : undefined,
       },
       include: {
         assignees: {
@@ -519,10 +474,6 @@ export class TasksService {
       userId,
       details: {
         ...updatedFields,
-        assignedToIds:
-          assignedToIds?.length && assignedToIds.length > 0
-            ? assignedToIds
-            : undefined,
         updatedBy: {
           id: userId,
           name: req?.user?.name,
@@ -677,7 +628,7 @@ export class TasksService {
       where: { id: taskId },
       data: {
         assignees: {
-          set: assigneeIds.map((id) => ({ id })),
+          connect: assigneeIds.map((id) => ({ id })),
         },
       },
       include: {
@@ -703,12 +654,18 @@ export class TasksService {
       userId,
       details: {
         taskId: taskId,
-        assigneeIds,
+        assignedTo: updatedTask.assignees.map((assignee) => {
+          if (!assigneeIds?.includes(assignee.id)) return;
+          return {
+            id: assignee.id,
+            name: assignee.name,
+            email: assignee.email,
+          };
+        }),
         assignedBy: {
           userId,
           name: user?.name,
           email: user?.email,
-          avatarUrl: user?.avatarUrl,
         },
       },
       ipAddress: req.ip as string,
@@ -718,6 +675,152 @@ export class TasksService {
     return {
       success: true,
       message: 'Task assigned successfully',
+      task: updatedTask,
+    };
+  }
+
+  async unassignTask(
+    projectId: string,
+    taskId: string,
+    data: UnassignTaskDto,
+    req: Request,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthenticated');
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const { userIds: assigneeIds } = data;
+
+    const project = await this.prismaService.project.findUnique({
+      where: { id: projectId },
+      include: { workspace: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const task = await this.prismaService.task.findUnique({
+      where: { id: taskId },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (task.projectId !== projectId) {
+      throw new BadRequestException('Task does not belong to this project');
+    }
+
+    const isOrgAdmin = await this.isOrgAdmin(
+      project.workspace.organizationId,
+      userId,
+    );
+
+    const workspaceMember = await this.prismaService.workspaceMember.findUnique(
+      {
+        where: {
+          userId_workspaceId: {
+            userId,
+            workspaceId: project.workspaceId,
+          },
+        },
+      },
+    );
+
+    if (!workspaceMember && !isOrgAdmin) {
+      throw new UnauthorizedException('You are not a member of this workspace');
+    }
+
+    if (!isOrgAdmin) {
+      if (project.nature === ProjectNature.PUBLIC) {
+        if (workspaceMember!.role === WorkspaceRole.MEMBER) {
+          throw new UnauthorizedException(
+            'Only workspace admins and owners can unassign tasks in public projects',
+          );
+        }
+      } else {
+        const projectMember = await this.prismaService.projectMember.findUnique(
+          {
+            where: {
+              projectId_userId: {
+                projectId,
+                userId,
+              },
+            },
+          },
+        );
+
+        if (
+          !projectMember &&
+          workspaceMember?.role !== WorkspaceRole.OWNER &&
+          workspaceMember?.role !== WorkspaceRole.ADMIN
+        ) {
+          throw new UnauthorizedException(
+            'You are not authorized to unassign tasks in this project',
+          );
+        }
+      }
+    }
+
+    const updatedTask = await this.prismaService.task.update({
+      where: { id: taskId },
+      data: {
+        assignees: {
+          disconnect: assigneeIds.map((id) => ({ id })),
+        },
+      },
+      include: {
+        assignees: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+        category: true,
+        links: true,
+      },
+    });
+
+    await this.auditLogsService.createLog({
+      action: AuditAction.TASK_UNASSIGN,
+      entityType: AuditEntityType.TASK,
+      entityId: taskId,
+      organizationId: project.workspace.organizationId,
+      workspaceId: project.workspaceId,
+      userId,
+      details: {
+        taskId: taskId,
+        unassignedFrom: updatedTask.assignees.map((assignee) => {
+          if (!assigneeIds?.includes(assignee.id)) return;
+          return {
+            id: assignee.id,
+            name: assignee.name,
+            email: assignee.email,
+          };
+        }),
+        unassignedBy: {
+          userId,
+          name: user?.name,
+          email: user?.email,
+        },
+      },
+      ipAddress: req.ip as string,
+      userAgent: req.headers['user-agent'] as string,
+    });
+
+    return {
+      success: true,
+      message: 'Task unassigned successfully',
       task: updatedTask,
     };
   }
