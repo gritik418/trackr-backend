@@ -13,26 +13,29 @@ import {
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
-import { GetTasksDto, getTasksSchema } from 'src/tasks/dto/get-tasks.schema';
-import { WorkspacesService } from './workspaces.service';
+import { Request } from 'express';
+import { OrgRole, WorkspaceRole } from 'generated/prisma/enums';
+import { AuthGuard } from 'src/common/guards/auth/auth.guard';
+import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
+import { OrgRoles } from 'src/organizations/decorators/org-roles.decorator';
+import { OrgRoleGuard } from 'src/organizations/guards/org-role/org-role.guard';
+import {
+  GetMyTasksDto,
+  getMyTasksSchema,
+} from 'src/workspaces/dto/get-my-tasks.schema';
+import { WorkspaceRoles } from './decorators/workspace-roles.decorator';
+import addMemberSchema, { AddMemberDto } from './dto/add-member.schema';
 import createWorkspaceSchema, {
   CreateWorkspaceDto,
 } from './dto/create-workspace.schema';
-import updateWorkspaceSchema, {
-  UpdateWorkspaceDto,
-} from './dto/update-workspace.schema';
-import addMemberSchema, { AddMemberDto } from './dto/add-member.schema';
 import updateMemberRoleSchema, {
   UpdateMemberRoleDto,
 } from './dto/update-member-role.schema';
-import { Request } from 'express';
-import { ZodValidationPipe } from 'src/common/pipes/zod-validation/zod-validation.pipe';
-import { AuthGuard } from 'src/common/guards/auth/auth.guard';
+import updateWorkspaceSchema, {
+  UpdateWorkspaceDto,
+} from './dto/update-workspace.schema';
 import { WorkspaceRoleGuard } from './guards/workspace-role.guard';
-import { OrgRole, WorkspaceRole } from 'generated/prisma/enums';
-import { WorkspaceRoles } from './decorators/workspace-roles.decorator';
-import { OrgRoleGuard } from 'src/organizations/guards/org-role/org-role.guard';
-import { OrgRoles } from 'src/organizations/decorators/org-roles.decorator';
+import { WorkspacesService } from './workspaces.service';
 
 @UseGuards(AuthGuard)
 @Controller()
@@ -181,7 +184,7 @@ export class WorkspacesController {
   @Get('workspaces/:workspaceId/my-tasks')
   @HttpCode(HttpStatus.OK)
   @UseGuards(WorkspaceRoleGuard)
-  @UsePipes(new ZodValidationPipe(getTasksSchema))
+  @UsePipes(new ZodValidationPipe(getMyTasksSchema))
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
@@ -189,7 +192,7 @@ export class WorkspacesController {
   )
   getMyTasks(
     @Param('workspaceId') workspaceId: string,
-    @Query() query: GetTasksDto,
+    @Query() query: GetMyTasksDto,
     @Req() req: Request,
   ) {
     return this.workspaceService.getMyTasks(workspaceId, query, req);

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { TaskStatus, TaskPriority } from 'generated/prisma/enums';
 
-enum ExtraTaskStatus {
+export enum ExtraTaskStatus {
   ALL = 'ALL',
 }
 
@@ -13,7 +13,7 @@ export const TaskStatusWithAll = {
 type TaskStatusWithAll =
   (typeof TaskStatusWithAll)[keyof typeof TaskStatusWithAll];
 
-enum ExtraTaskPriority {
+export enum ExtraTaskPriority {
   ALL = 'ALL',
 }
 
@@ -25,7 +25,7 @@ export const TaskPriorityWithAll = {
 type TaskPriorityWithAll =
   (typeof TaskPriorityWithAll)[keyof typeof TaskPriorityWithAll];
 
-export const getTasksSchema = z.object({
+export const getMyTasksSchema = z.object({
   priority: z
     .enum(TaskPriorityWithAll)
     .optional()
@@ -40,6 +40,12 @@ export const getTasksSchema = z.object({
     .optional()
     .default('updatedAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  projectIds: z
+    .preprocess((val) => {
+      if (typeof val === 'string') return [val];
+      return val;
+    }, z.array(z.string()))
+    .optional(),
 });
 
-export type GetTasksDto = z.infer<typeof getTasksSchema>;
+export type GetMyTasksDto = z.infer<typeof getMyTasksSchema>;

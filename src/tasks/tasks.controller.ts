@@ -20,7 +20,10 @@ import { ProjectRoles } from 'src/projects/decorators/project-roles.decorator';
 import { ProjectRoleGuard } from 'src/projects/guards/project-role.guard';
 import { AssignTaskDto, assignTaskSchema } from './dto/assign-task.schema';
 import createTaskSchema, { CreateTaskDto } from './dto/create-task.schema';
-import { GetTasksDto, getTasksSchema } from './dto/get-tasks.schema';
+import {
+  GetMyTasksDto as GetTasksDto,
+  getMyTasksSchema as getTasksSchema,
+} from '../workspaces/dto/get-my-tasks.schema';
 import { UpdateTaskDto, updateTaskSchema } from './dto/update-task.schema';
 import {
   UnassignTaskDto,

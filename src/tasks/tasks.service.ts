@@ -19,10 +19,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AssignTaskDto } from './dto/assign-task.schema';
 import { CreateTaskDto } from './dto/create-task.schema';
 import {
-  GetTasksDto,
+  GetMyTasksDto as GetTasksDto,
   TaskPriorityWithAll,
   TaskStatusWithAll,
-} from './dto/get-tasks.schema';
+} from '../workspaces/dto/get-my-tasks.schema';
 import { UnassignTaskDto } from './dto/unassign-task.schema';
 import { UpdateTaskDto } from './dto/update-task.schema';
 

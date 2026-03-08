@@ -4,20 +4,20 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateWorkspaceDto } from './dto/create-workspace.schema';
-import { UpdateWorkspaceDto } from './dto/update-workspace.schema';
-import { AddMemberDto } from './dto/add-member.schema';
-import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 import { Request } from 'express';
+import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
+import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
+import { sanitizeUser } from 'src/common/utils/sanitize-user';
+import { PrismaService } from 'src/prisma/prisma.service';
 import {
-  GetTasksDto,
+  GetMyTasksDto,
   TaskPriorityWithAll,
   TaskStatusWithAll,
-} from 'src/tasks/dto/get-tasks.schema';
-import { sanitizeUser } from 'src/common/utils/sanitize-user';
-import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
-import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
+} from 'src/workspaces/dto/get-my-tasks.schema';
+import { AddMemberDto } from './dto/add-member.schema';
+import { CreateWorkspaceDto } from './dto/create-workspace.schema';
+import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
+import { UpdateWorkspaceDto } from './dto/update-workspace.schema';
 
 @Injectable()
 export class WorkspacesService {
@@ -751,13 +751,22 @@ export class WorkspacesService {
     };
   }
 
-  async getMyTasks(workspaceId: string, query: GetTasksDto, req: Request) {
+  async getMyTasks(workspaceId: string, query: GetMyTasksDto, req: Request) {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
     if (!workspaceId)
       throw new BadRequestException('Workspace ID is required.');
 
-    const { status, priority, tag, limit, page, search, sortBy, sortOrder } =
-      query;
+    const {
+      status,
+      priority,
+      tag,
+      limit,
+      page,
+      search,
+      sortBy,
+      sortOrder,
+      projectIds,
+    } = query;
     const where: Record<string, any> = {
       workspaceId,
       assignees: { some: { id: req.user.id } },
@@ -782,6 +791,9 @@ export class WorkspacesService {
         },
       ];
     }
+    if (projectIds && projectIds.length > 0) {
+      where.projectId = { in: projectIds };
+    }
     if (tag) where.tag = tag;
 
     const orderBy: Record<string, any> = {};
@@ -801,10 +813,12 @@ export class WorkspacesService {
       },
     });
 
+    const total = await this.prismaService.task.count({ where });
+
     const tasks = await this.prismaService.task.findMany({
       where,
       take: limit,
-      skip: Number((page - 1) * limit),
+      skip: (page - 1) * limit,
       include: {
         project: true,
         assignees: {
@@ -824,11 +838,13 @@ export class WorkspacesService {
       message: 'My tasks retrieved successfully.',
       tasks,
       projects,
+      statuses: Object.values(TaskStatusWithAll),
+      priorities: Object.values(TaskPriorityWithAll),
       pagination: {
         page,
         limit,
-        total: tasks.length,
-        totalPages: Math.ceil(tasks.length / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
