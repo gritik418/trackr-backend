@@ -10,7 +10,11 @@ import { UpdateWorkspaceDto } from './dto/update-workspace.schema';
 import { AddMemberDto } from './dto/add-member.schema';
 import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 import { Request } from 'express';
-import { GetTasksDto, TaskStatusWithAll } from 'src/tasks/dto/get-tasks.schema';
+import {
+  GetTasksDto,
+  TaskPriorityWithAll,
+  TaskStatusWithAll,
+} from 'src/tasks/dto/get-tasks.schema';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
@@ -752,16 +756,55 @@ export class WorkspacesService {
     if (!workspaceId)
       throw new BadRequestException('Workspace ID is required.');
 
-    const { status, priority, tag } = query;
+    const { status, priority, tag, limit, page, search, sortBy, sortOrder } =
+      query;
+    const where: Record<string, any> = {
+      workspaceId,
+      assignees: { some: { id: req.user.id } },
+    };
 
-    const tasks = await this.prismaService.task.findMany({
+    if (status && status !== TaskStatusWithAll.ALL) where.status = status;
+    if (priority && priority !== TaskPriorityWithAll.ALL)
+      where.priority = priority;
+    if (search) {
+      where.OR = [
+        {
+          title: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          description: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+    if (tag) where.tag = tag;
+
+    const orderBy: Record<string, any> = {};
+
+    if (sortBy) {
+      orderBy[sortBy] = sortOrder ? sortOrder : 'asc';
+    }
+
+    const projects = await this.prismaService.project.findMany({
       where: {
         workspaceId,
-        status: status === TaskStatusWithAll.ALL ? undefined : status,
-        priority,
-        tag,
-        assignees: { some: { id: req.user.id } },
+        members: { some: { userId: req.user.id } },
       },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const tasks = await this.prismaService.task.findMany({
+      where,
+      take: limit,
+      skip: Number((page - 1) * limit),
       include: {
         project: true,
         assignees: {
@@ -773,13 +816,20 @@ export class WorkspacesService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: orderBy || { createdAt: 'desc' },
     });
 
     return {
       success: true,
       message: 'My tasks retrieved successfully.',
       tasks,
+      projects,
+      pagination: {
+        page,
+        limit,
+        total: tasks.length,
+        totalPages: Math.ceil(tasks.length / limit),
+      },
     };
   }
 }

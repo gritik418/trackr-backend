@@ -13,7 +13,7 @@ import {
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
-import { GetTasksDto } from 'src/tasks/dto/get-tasks.schema';
+import { GetTasksDto, getTasksSchema } from 'src/tasks/dto/get-tasks.schema';
 import { WorkspacesService } from './workspaces.service';
 import createWorkspaceSchema, {
   CreateWorkspaceDto,
@@ -181,6 +181,7 @@ export class WorkspacesController {
   @Get('workspaces/:workspaceId/my-tasks')
   @HttpCode(HttpStatus.OK)
   @UseGuards(WorkspaceRoleGuard)
+  @UsePipes(new ZodValidationPipe(getTasksSchema))
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,

@@ -18,7 +18,11 @@ import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AssignTaskDto } from './dto/assign-task.schema';
 import { CreateTaskDto } from './dto/create-task.schema';
-import { GetTasksDto, TaskStatusWithAll } from './dto/get-tasks.schema';
+import {
+  GetTasksDto,
+  TaskPriorityWithAll,
+  TaskStatusWithAll,
+} from './dto/get-tasks.schema';
 import { UnassignTaskDto } from './dto/unassign-task.schema';
 import { UpdateTaskDto } from './dto/update-task.schema';
 
@@ -852,8 +856,31 @@ export class TasksService {
     const where: Record<string, any> = {};
 
     if (status && status !== TaskStatusWithAll.ALL) where.status = status;
-    if (priority) where.priority = priority;
+    if (priority && priority !== TaskPriorityWithAll.ALL)
+      where.priority = priority;
+    if (search) {
+      where.OR = [
+        {
+          title: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          description: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
     if (tag) where.tag = tag;
+
+    const orderBy: Record<string, any> = {};
+
+    if (sortBy) {
+      orderBy[sortBy] = sortOrder ? sortOrder : 'asc';
+    }
 
     where.assignees = { some: { id: userId } };
     where.projectId = projectId;
@@ -908,6 +935,8 @@ export class TasksService {
 
     const tasks = await this.prismaService.task.findMany({
       where,
+      take: limit,
+      skip: (page - 1) * limit,
       include: {
         assignees: {
           select: {
@@ -920,9 +949,7 @@ export class TasksService {
         category: true,
         links: true,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: orderBy || { createdAt: 'desc' },
     });
 
     return {

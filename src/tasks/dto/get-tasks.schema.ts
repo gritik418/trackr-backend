@@ -13,8 +13,23 @@ export const TaskStatusWithAll = {
 type TaskStatusWithAll =
   (typeof TaskStatusWithAll)[keyof typeof TaskStatusWithAll];
 
+enum ExtraTaskPriority {
+  ALL = 'ALL',
+}
+
+export const TaskPriorityWithAll = {
+  ...TaskPriority,
+  ...ExtraTaskPriority,
+};
+
+type TaskPriorityWithAll =
+  (typeof TaskPriorityWithAll)[keyof typeof TaskPriorityWithAll];
+
 export const getTasksSchema = z.object({
-  priority: z.enum(TaskPriority).optional(),
+  priority: z
+    .enum(TaskPriorityWithAll)
+    .optional()
+    .default(TaskPriorityWithAll.ALL),
   tag: z.string().optional(),
   page: z.coerce.number().optional().default(1),
   limit: z.coerce.number().optional().default(10),
