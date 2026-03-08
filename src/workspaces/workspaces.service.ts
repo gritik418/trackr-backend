@@ -757,8 +757,8 @@ export class WorkspacesService {
       throw new BadRequestException('Workspace ID is required.');
 
     const {
-      status,
-      priority,
+      statuses,
+      priorities,
       tag,
       limit,
       page,
@@ -767,14 +767,27 @@ export class WorkspacesService {
       sortOrder,
       projectIds,
     } = query;
+
     const where: Record<string, any> = {
       workspaceId,
       assignees: { some: { id: req.user.id } },
     };
 
-    if (status && status !== TaskStatusWithAll.ALL) where.status = status;
-    if (priority && priority !== TaskPriorityWithAll.ALL)
-      where.priority = priority;
+    if (
+      statuses &&
+      statuses.length > 0 &&
+      !statuses.includes(TaskStatusWithAll.ALL)
+    ) {
+      where.status = { in: statuses };
+    }
+
+    if (
+      priorities &&
+      priorities.length > 0 &&
+      !priorities.includes(TaskPriorityWithAll.ALL)
+    ) {
+      where.priority = { in: priorities };
+    }
     if (search) {
       where.OR = [
         {

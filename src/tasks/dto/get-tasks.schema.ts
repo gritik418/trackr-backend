@@ -25,31 +25,16 @@ export const TaskPriorityWithAll = {
 type TaskPriorityWithAll =
   (typeof TaskPriorityWithAll)[keyof typeof TaskPriorityWithAll];
 
-export const getMyTasksSchema = z.object({
-  priorities: z
-    .preprocess(
-      (val) => {
-        if (typeof val === 'string') return [val];
-        return val;
-      },
-      z.array(z.enum(TaskPriorityWithAll)),
-    )
+export const getTasksSchema = z.object({
+  priority: z
+    .enum(TaskPriorityWithAll)
     .optional()
-    .default([TaskPriorityWithAll.ALL]),
+    .default(TaskPriorityWithAll.ALL),
   tag: z.string().optional(),
   page: z.coerce.number().optional().default(1),
   limit: z.coerce.number().optional().default(10),
   search: z.string().optional(),
-  statuses: z
-    .preprocess(
-      (val) => {
-        if (typeof val === 'string') return [val];
-        return val;
-      },
-      z.array(z.enum(TaskStatusWithAll)),
-    )
-    .optional()
-    .default([TaskStatusWithAll.ALL]),
+  status: z.enum(TaskStatusWithAll).optional().default(TaskStatusWithAll.ALL),
   sortBy: z
     .enum(['createdAt', 'updatedAt', 'deadline'])
     .optional()
@@ -63,4 +48,4 @@ export const getMyTasksSchema = z.object({
     .optional(),
 });
 
-export type GetMyTasksDto = z.infer<typeof getMyTasksSchema>;
+export type GetTasksDto = z.infer<typeof getTasksSchema>;

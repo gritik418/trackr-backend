@@ -20,16 +20,17 @@ import { ProjectRoles } from 'src/projects/decorators/project-roles.decorator';
 import { ProjectRoleGuard } from 'src/projects/guards/project-role.guard';
 import { AssignTaskDto, assignTaskSchema } from './dto/assign-task.schema';
 import createTaskSchema, { CreateTaskDto } from './dto/create-task.schema';
-import {
-  GetMyTasksDto as GetTasksDto,
-  getMyTasksSchema as getTasksSchema,
-} from '../workspaces/dto/get-my-tasks.schema';
 import { UpdateTaskDto, updateTaskSchema } from './dto/update-task.schema';
 import {
   UnassignTaskDto,
   unassignTaskSchema,
 } from './dto/unassign-task.schema';
 import { TasksService } from './tasks.service';
+import { GetTasksDto, getTasksSchema } from './dto/get-tasks.schema';
+import {
+  GetMyTasksDto,
+  getMyTasksSchema,
+} from 'src/workspaces/dto/get-my-tasks.schema';
 
 @UseGuards(AuthGuard)
 @Controller('projects/:projectId/tasks')
@@ -66,10 +67,10 @@ export class TasksController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(ProjectRoleGuard)
   @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
-  @UsePipes(new ZodValidationPipe(getTasksSchema))
+  @UsePipes(new ZodValidationPipe(getMyTasksSchema))
   getMyTasks(
     @Param('projectId') projectId: string,
-    @Query() query: GetTasksDto,
+    @Query() query: GetMyTasksDto,
     @Req() req: Request,
   ) {
     return this.tasksService.getMyTasks(projectId, query, req);

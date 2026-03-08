@@ -19,12 +19,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AssignTaskDto } from './dto/assign-task.schema';
 import { CreateTaskDto } from './dto/create-task.schema';
 import {
-  GetMyTasksDto as GetTasksDto,
+  GetTasksDto,
   TaskPriorityWithAll,
   TaskStatusWithAll,
-} from '../workspaces/dto/get-my-tasks.schema';
+} from './dto/get-tasks.schema';
 import { UnassignTaskDto } from './dto/unassign-task.schema';
 import { UpdateTaskDto } from './dto/update-task.schema';
+import { GetMyTasksDto } from 'src/workspaces/dto/get-my-tasks.schema';
 
 @Injectable()
 export class TasksService {
@@ -265,8 +266,12 @@ export class TasksService {
     const { status, priority, tag, page, limit, sortBy, sortOrder, search } =
       query;
 
-    if (status && status !== TaskStatusWithAll.ALL) where.status = status;
-    if (priority) where.priority = priority;
+    if (status && status !== TaskStatusWithAll.ALL) {
+      where.status = status;
+    }
+    if (priority && priority !== TaskPriorityWithAll.ALL) {
+      where.priority = priority;
+    }
     if (tag) where.tag = tag;
     if (search) {
       where.OR = [
@@ -846,18 +851,29 @@ export class TasksService {
     };
   }
 
-  async getMyTasks(projectId: string, query: GetTasksDto, req: Request) {
+  async getMyTasks(projectId: string, query: GetMyTasksDto, req: Request) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const { status, priority, tag, search, sortBy, sortOrder, limit, page } =
-      query;
+    const {
+      statuses,
+      priorities,
+      tag,
+      search,
+      sortBy,
+      sortOrder,
+      limit,
+      page,
+    } = query;
 
     const where: Record<string, any> = {};
 
-    if (status && status !== TaskStatusWithAll.ALL) where.status = status;
-    if (priority && priority !== TaskPriorityWithAll.ALL)
-      where.priority = priority;
+    if (statuses && !statuses.includes(TaskStatusWithAll.ALL)) {
+      where.status = { in: statuses };
+    }
+    if (priorities && !priorities.includes(TaskPriorityWithAll.ALL)) {
+      where.priority = { in: priorities };
+    }
     if (search) {
       where.OR = [
         {
