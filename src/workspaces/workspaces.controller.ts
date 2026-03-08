@@ -181,6 +181,17 @@ export class WorkspacesController {
     );
   }
 
+  @Get('workspaces/:workspaceId/overview')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  getWorkspaceOverview(
+    @Param('workspaceId') workspaceId: string,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.getWorkspaceOverview(workspaceId, req);
+  }
+
   @Get('workspaces/:workspaceId/my-tasks')
   @HttpCode(HttpStatus.OK)
   @UseGuards(WorkspaceRoleGuard)

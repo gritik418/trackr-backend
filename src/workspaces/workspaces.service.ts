@@ -1,11 +1,17 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { AuditAction, AuditEntityType } from 'generated/prisma/enums';
+import {
+  AuditAction,
+  AuditEntityType,
+  TaskStatus,
+  WorkspaceRole,
+} from 'generated/prisma/enums';
 import { AuditLogsService } from 'src/audit-logs/audit-logs.service';
 import { sanitizeUser } from 'src/common/utils/sanitize-user';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -18,6 +24,7 @@ import { AddMemberDto } from './dto/add-member.schema';
 import { CreateWorkspaceDto } from './dto/create-workspace.schema';
 import { UpdateMemberRoleDto } from './dto/update-member-role.schema';
 import { UpdateWorkspaceDto } from './dto/update-workspace.schema';
+import { WorkspaceOverview } from './interfaces/workspace-overview.interface';
 
 @Injectable()
 export class WorkspacesService {
@@ -858,6 +865,200 @@ export class WorkspacesService {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getWorkspaceOverview(workspaceId: string, req: Request) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+
+    if (!workspaceId)
+      throw new BadRequestException('Workspace ID is required.');
+
+    const workspace = await this.prismaService.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { organizationId: true },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found.');
+    }
+
+    const organizationMember =
+      await this.prismaService.organizationMember.findFirst({
+        where: {
+          organizationId: workspace.organizationId,
+          userId: req.user.id,
+        },
+        select: {
+          role: true,
+        },
+      });
+
+    const workspaceMember = await this.prismaService.workspaceMember.findUnique(
+      {
+        where: {
+          userId_workspaceId: { userId: req.user.id, workspaceId },
+        },
+        select: {
+          role: true,
+        },
+      },
+    );
+
+    if (!workspaceMember && !organizationMember) {
+      throw new ForbiddenException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    if (
+      workspaceMember?.role !== WorkspaceRole.OWNER &&
+      workspaceMember?.role !== WorkspaceRole.ADMIN &&
+      organizationMember?.role !== WorkspaceRole.OWNER &&
+      organizationMember?.role !== WorkspaceRole.ADMIN
+    ) {
+      throw new ForbiddenException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    const projects = await this.prismaService.project.findMany({
+      where: {
+        workspaceId,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const now = new Date();
+    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const last14Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      membersCount,
+      projectsCount,
+      totalTasksCount,
+      completedTasksCount,
+      groupedTasks,
+      recentTasks,
+    ] = await Promise.all([
+      this.prismaService.workspaceMember.count({
+        where: { workspaceId },
+      }),
+      this.prismaService.project.count({
+        where: { workspaceId },
+      }),
+      this.prismaService.task.count({
+        where: { workspaceId },
+      }),
+      this.prismaService.task.count({
+        where: { workspaceId, status: TaskStatus.DONE },
+      }),
+      this.prismaService.task.groupBy({
+        by: ['status'],
+        where: { workspaceId },
+        _count: { _all: true },
+      }),
+      this.prismaService.task.findMany({
+        where: {
+          workspaceId,
+          OR: [
+            { createdAt: { gte: last30Days } },
+            { completedAt: { gte: last30Days } },
+          ],
+        },
+        select: {
+          createdAt: true,
+          completedAt: true,
+          status: true,
+        },
+      }),
+    ]);
+
+    // Velocity Calculations
+    const tasksCompletedLast7Days = recentTasks.filter(
+      (t) => t.completedAt && t.completedAt >= last7Days,
+    ).length;
+    const tasksCompletedLast14Days = recentTasks.filter(
+      (t) => t.completedAt && t.completedAt >= last14Days,
+    ).length;
+    const tasksCompletedLast30Days = recentTasks.filter(
+      (t) => t.completedAt && t.completedAt >= last30Days,
+    ).length;
+
+    const completionRate =
+      totalTasksCount === 0 ? 0 : (completedTasksCount / totalTasksCount) * 100;
+
+    // Graph Data Preparation
+    const dayMap: Record<string, { created: number; completed: number }> = {};
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
+      dayMap[date] = { created: 0, completed: 0 };
+    }
+
+    recentTasks.forEach((task) => {
+      const createdDate = task.createdAt.toISOString().split('T')[0];
+      if (dayMap[createdDate]) {
+        dayMap[createdDate].created += 1;
+      }
+      if (task.completedAt) {
+        const completedDate = task.completedAt.toISOString().split('T')[0];
+        if (dayMap[completedDate]) {
+          dayMap[completedDate].completed += 1;
+        }
+      }
+    });
+
+    const graphData = Object.entries(dayMap)
+      .map(([date, counts]) => ({
+        date,
+        ...counts,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Ensure all statuses are present in the distribution
+    const statusMap = groupedTasks.reduce(
+      (acc, curr) => {
+        acc[curr.status] = curr._count._all;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const taskStatusDistribution = Object.values(TaskStatus).map((status) => ({
+      status,
+      count: statusMap[status] || 0,
+    }));
+
+    return {
+      success: true,
+      message: 'Workspace overview retrieved successfully.',
+      overview: {
+        workspaceId,
+        projectsCount,
+        membersCount,
+        tasks: taskStatusDistribution,
+        completionRate,
+        velocity: {
+          tasksCompletedLast7Days,
+          tasksCompletedLast14Days,
+          tasksCompletedLast30Days,
+          avgTasksPerDay: tasksCompletedLast30Days / 30,
+        },
+        graphs: {
+          taskStatusDistribution,
+          tasksCompletedOverTime: graphData.map((gd) => ({
+            date: gd.date,
+            count: gd.completed,
+          })),
+          tasksCreatedVsCompleted: graphData,
+        },
       },
     };
   }
