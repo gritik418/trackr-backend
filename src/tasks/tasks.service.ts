@@ -255,7 +255,9 @@ export class TasksService {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const where: Record<string, any> = {};
+    const where: Record<string, any> = {
+      projectId,
+    };
     const { status, priority, tag, page, limit, sortBy, sortOrder, search } =
       query;
 
@@ -387,6 +389,7 @@ export class TasksService {
 
     const task = await this.prismaService.task.findUnique({
       where: { id: taskId },
+      include: { assignees: true },
     });
 
     if (!task) {
@@ -474,6 +477,15 @@ export class TasksService {
       userId,
       details: {
         ...updatedFields,
+        previousState: {
+          title: task.title,
+          status: task.status,
+          priority: task.priority,
+          deadline: task.deadline,
+          categoryId: task.categoryId,
+          tag: task.tag,
+          description: task.description,
+        },
         updatedBy: {
           id: userId,
           name: req?.user?.name,
@@ -521,6 +533,7 @@ export class TasksService {
 
     const task = await this.prismaService.task.findUnique({
       where: { id: taskId },
+      include: { assignees: true },
     });
 
     if (!task) {
@@ -654,6 +667,7 @@ export class TasksService {
       userId,
       details: {
         taskId: taskId,
+        previousAssignees: task.assignees, // task was fetched before update
         assignedTo: updatedTask.assignees
           .filter((assignee) => assigneeIds?.includes(assignee.id))
           .map((assignee) => ({
@@ -708,6 +722,7 @@ export class TasksService {
 
     const task = await this.prismaService.task.findUnique({
       where: { id: taskId },
+      include: { assignees: true },
     });
 
     if (!task) {
@@ -799,6 +814,7 @@ export class TasksService {
       userId,
       details: {
         taskId: taskId,
+        previousAssignees: task.assignees,
         unassignedFrom: (
           await this.prismaService.user.findMany({
             where: { id: { in: assigneeIds } },
@@ -830,13 +846,15 @@ export class TasksService {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('Unauthenticated');
 
-    const { status, priority, tag } = query;
+    const { status, priority, tag, search, sortBy, sortOrder, limit, page } =
+      query;
 
     const where: Record<string, any> = {};
 
     if (status && status !== TaskStatusWithAll.ALL) where.status = status;
     if (priority) where.priority = priority;
     if (tag) where.tag = tag;
+
     where.assignees = { some: { id: userId } };
     where.projectId = projectId;
 
