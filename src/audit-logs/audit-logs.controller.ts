@@ -21,6 +21,9 @@ import {
   GetAuditLogsDto,
   getAuditLogsSchema,
 } from './dto/get-audit-logs.schema';
+import { SubscriptionGuard } from 'src/subscriptions/guards/subscription.guard';
+import { Subscription } from 'src/subscriptions/decorators/subscription.decorator';
+import { Limit } from 'src/subscriptions/enums/limit.enum';
 
 @UseGuards(AuthGuard)
 @Controller('audit-logs')
@@ -59,7 +62,8 @@ export class AuditLogsController {
   @Get('/export/:orgId')
   @HttpCode(HttpStatus.OK)
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
-  @UseGuards(OrgRoleGuard)
+  @UseGuards(OrgRoleGuard, SubscriptionGuard)
+  @Subscription(Limit.IS_LOG_EXPORT_AVAILABLE)
   @UsePipes(new ZodValidationPipe(getAuditLogsSchema))
   async exportWorkspaceLogs(
     @Param('orgId') orgId: string,
