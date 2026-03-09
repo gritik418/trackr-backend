@@ -47,6 +47,7 @@ export class WorkspaceInvitesService {
       select: {
         id: true,
         name: true,
+        organizationId: true,
       },
     });
 
@@ -78,6 +79,19 @@ export class WorkspaceInvitesService {
     if (existingMember) {
       throw new BadRequestException(
         'User is already a member of this workspace',
+      );
+    }
+
+    const orgMember = await this.prismaService.organizationMember.findFirst({
+      where: {
+        user: { email },
+        organizationId: workspace.organizationId,
+      },
+    });
+
+    if (!orgMember) {
+      throw new BadRequestException(
+        'User is not a member of this organization, please add them to the organization first',
       );
     }
 
@@ -263,6 +277,7 @@ export class WorkspaceInvitesService {
       select: {
         id: true,
         name: true,
+        organizationId: true,
       },
     });
 
@@ -304,6 +319,19 @@ export class WorkspaceInvitesService {
 
     if (!inviter) {
       throw new UnauthorizedException('User not found');
+    }
+
+    const orgMember = await this.prismaService.organizationMember.findFirst({
+      where: {
+        user: { email: invite.email },
+        organizationId: workspace.organizationId,
+      },
+    });
+
+    if (!orgMember) {
+      throw new BadRequestException(
+        'User is not a member of this organization, please add them to the organization first',
+      );
     }
 
     const token = uuidv4();

@@ -36,6 +36,9 @@ import updateWorkspaceSchema, {
 } from './dto/update-workspace.schema';
 import { WorkspaceRoleGuard } from './guards/workspace-role.guard';
 import { WorkspacesService } from './workspaces.service';
+import { SubscriptionGuard } from 'src/subscriptions/guards/subscription.guard';
+import { Subscription } from 'src/subscriptions/decorators/subscription.decorator';
+import { Limit } from 'src/subscriptions/enums/limit.enum';
 
 @UseGuards(AuthGuard)
 @Controller()
@@ -43,7 +46,8 @@ export class WorkspacesController {
   constructor(private readonly workspaceService: WorkspacesService) {}
 
   @Post('organizations/:orgId/workspaces')
-  @UseGuards(OrgRoleGuard)
+  @UseGuards(OrgRoleGuard, SubscriptionGuard)
+  @Subscription(Limit.MAX_WORKSPACES)
   @UsePipes(new ZodValidationPipe(createWorkspaceSchema))
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
