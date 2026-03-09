@@ -31,6 +31,9 @@ import {
   GetMyTasksDto,
   getMyTasksSchema,
 } from 'src/workspaces/dto/get-my-tasks.schema';
+import { SubscriptionGuard } from 'src/subscriptions/guards/subscription.guard';
+import { Subscription } from 'src/subscriptions/decorators/subscription.decorator';
+import { Limit } from 'src/subscriptions/enums/limit.enum';
 
 @UseGuards(AuthGuard)
 @Controller('projects/:projectId/tasks')
@@ -39,7 +42,8 @@ export class TasksController {
 
   @Post('/')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(ProjectRoleGuard)
+  @UseGuards(ProjectRoleGuard, SubscriptionGuard)
+  @Subscription(Limit.MAX_TASKS_PER_PROJECT)
   @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
   @UsePipes(new ZodValidationPipe(createTaskSchema))
   createTask(
