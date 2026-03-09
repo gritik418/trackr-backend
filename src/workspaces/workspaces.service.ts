@@ -869,6 +869,120 @@ export class WorkspacesService {
     };
   }
 
+  async getWorkspaceTasks(
+    workspaceId: string,
+    query: GetMyTasksDto,
+    req: Request,
+  ) {
+    if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
+    if (!workspaceId)
+      throw new BadRequestException('Workspace ID is required.');
+
+    const {
+      statuses,
+      priorities,
+      tag,
+      limit,
+      page,
+      search,
+      sortBy,
+      sortOrder,
+      projectIds,
+    } = query;
+
+    const where: Record<string, any> = {
+      workspaceId,
+    };
+
+    if (
+      statuses &&
+      statuses.length > 0 &&
+      !statuses.includes(TaskStatusWithAll.ALL)
+    ) {
+      where.status = { in: statuses };
+    }
+
+    if (
+      priorities &&
+      priorities.length > 0 &&
+      !priorities.includes(TaskPriorityWithAll.ALL)
+    ) {
+      where.priority = { in: priorities };
+    }
+    if (search) {
+      where.OR = [
+        {
+          title: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          description: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+    if (projectIds && projectIds.length > 0) {
+      where.projectId = { in: projectIds };
+    }
+    if (tag) where.tag = tag;
+
+    const orderBy: Record<string, any> = {};
+
+    if (sortBy) {
+      orderBy[sortBy] = sortOrder ? sortOrder : 'asc';
+    }
+
+    const projects = await this.prismaService.project.findMany({
+      where: {
+        workspaceId,
+        members: { some: { userId: req.user.id } },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const total = await this.prismaService.task.count({ where });
+
+    const tasks = await this.prismaService.task.findMany({
+      where,
+      take: limit,
+      skip: (page - 1) * limit,
+      include: {
+        project: true,
+        assignees: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: orderBy || { createdAt: 'desc' },
+    });
+
+    return {
+      success: true,
+      message: 'Workspace tasks retrieved successfully.',
+      tasks,
+      projects,
+      statuses: Object.values(TaskStatusWithAll),
+      priorities: Object.values(TaskPriorityWithAll),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   async getWorkspaceOverview(workspaceId: string, req: Request) {
     if (!req.user?.id) throw new UnauthorizedException('Unauthenticated');
 

@@ -212,4 +212,21 @@ export class WorkspacesController {
   ) {
     return this.workspaceService.getMyTasks(workspaceId, query, req);
   }
+
+  @Get('workspaces/:workspaceId/tasks')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(WorkspaceRoleGuard)
+  @UsePipes(new ZodValidationPipe(getMyTasksSchema))
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  getWorkspaceTasks(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: GetMyTasksDto,
+    @Req() req: Request,
+  ) {
+    return this.workspaceService.getWorkspaceTasks(workspaceId, query, req);
+  }
 }
