@@ -31,6 +31,9 @@ import {
   GetOrgInvitesDto,
   getOrgInvitesSchema,
 } from './dto/get-org-members.schema';
+import { SubscriptionGuard } from 'src/subscriptions/guards/subscription.guard';
+import { Subscription } from 'src/subscriptions/decorators/subscription.decorator';
+import { Limit } from 'src/subscriptions/enums/limit.enum';
 
 @UseGuards(AuthGuard)
 @Controller('organizations/:orgId/invites')
@@ -39,7 +42,8 @@ export class OrgInvitesController {
 
   @Post('/')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(OrgRoleGuard)
+  @UseGuards(OrgRoleGuard, SubscriptionGuard)
+  @Subscription(Limit.MAX_MEMBERS_PER_ORG)
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   @UsePipes(new ZodValidationPipe(sendOrgInviteSchema))
   sendInvite(
@@ -77,7 +81,8 @@ export class OrgInvitesController {
 
   @Patch('/:inviteId/resend')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(OrgRoleGuard)
+  @UseGuards(OrgRoleGuard, SubscriptionGuard)
+  @Subscription(Limit.MAX_MEMBERS_PER_ORG)
   @OrgRoles(OrgRole.OWNER, OrgRole.ADMIN)
   resendInvite(
     @Param('orgId') orgId: string,
@@ -89,6 +94,8 @@ export class OrgInvitesController {
 
   @Post('/accept')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(SubscriptionGuard)
+  @Subscription(Limit.MAX_MEMBERS_PER_ORG)
   @UsePipes(new ZodValidationPipe(acceptOrgInviteSchema))
   acceptInvite(
     @Param('orgId') orgId: string,
