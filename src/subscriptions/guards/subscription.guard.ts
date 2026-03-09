@@ -27,6 +27,16 @@ export class SubscriptionGuard implements CanActivate {
     const orgId =
       req.params.orgId || req.body.orgId || (req.query.orgId as string);
 
+    const workspaceId =
+      req.params.workspaceId ||
+      req.body.workspaceId ||
+      (req.query.workspaceId as string);
+
+    const projectId =
+      req.params.projectId ||
+      req.body.projectId ||
+      (req.query.projectId as string);
+
     if (!userId) {
       throw new ForbiddenException('Access denied');
     }
@@ -40,14 +50,19 @@ export class SubscriptionGuard implements CanActivate {
       return true;
     }
 
-    if (!orgId) {
+    if (!orgId && !workspaceId && !projectId) {
       throw new ForbiddenException(
-        'Organization ID is required for limit check',
+        'Organization ID or Workspace ID or Project ID is required for limit check',
       );
     }
 
-    const activeSub =
-      await this.subscriptionsService.getActiveSubscription(orgId);
+    const activeSub = await this.subscriptionsService.getSubscriptionByContext(
+      orgId,
+      {
+        workspaceId,
+        projectId,
+      },
+    );
 
     if (!activeSub || !activeSub.subscription) {
       throw new ForbiddenException(
@@ -66,8 +81,8 @@ export class SubscriptionGuard implements CanActivate {
 
       const isAllowed = await this.limitHandler.checkLimit(limitKey, orgId, {
         limitValue,
-        workspaceId: req.params.workspaceId,
-        projectId: req.params.projectId,
+        workspaceId,
+        projectId,
       });
 
       if (!isAllowed) {

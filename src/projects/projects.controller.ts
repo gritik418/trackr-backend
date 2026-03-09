@@ -35,6 +35,9 @@ import { ProjectRole, WorkspaceRole } from 'generated/prisma/enums';
 import { WorkspaceRoleGuard } from 'src/workspaces/guards/workspace-role.guard';
 import { WorkspaceRoles } from 'src/workspaces/decorators/workspace-roles.decorator';
 import { GetProjectsDto, getProjectsSchema } from './dto/get-projects.schema';
+import { SubscriptionGuard } from 'src/subscriptions/guards/subscription.guard';
+import { Subscription } from 'src/subscriptions/decorators/subscription.decorator';
+import { Limit } from 'src/subscriptions/enums/limit.enum';
 
 @UseGuards(AuthGuard, WorkspaceRoleGuard)
 @Controller('workspaces/:workspaceId/projects')
@@ -44,6 +47,8 @@ export class ProjectsController {
   @Post('/')
   @HttpCode(HttpStatus.CREATED)
   @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @UseGuards(SubscriptionGuard)
+  @Subscription(Limit.MAX_PROJECTS_PER_WORKSPACE)
   @UsePipes(new ZodValidationPipe(createProjectSchema))
   createProject(
     @Param('workspaceId') workspaceId: string,

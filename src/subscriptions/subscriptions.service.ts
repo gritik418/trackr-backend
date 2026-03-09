@@ -164,6 +164,55 @@ export class SubscriptionsService {
     };
   }
 
+  async getSubscriptionByContext(
+    orgId: string,
+    context: { workspaceId?: string; projectId?: string },
+  ) {
+    if (!orgId) {
+      if (!context.workspaceId && !context.projectId)
+        throw new BadRequestException('Please provide organization ID.');
+
+      const workspace = await this.prismaService.workspace.findUnique({
+        where: { id: context.workspaceId },
+        select: { organizationId: true },
+      });
+
+      if (!workspace) {
+        const project = await this.prismaService.project.findUnique({
+          where: { id: context.projectId },
+          select: {
+            workspaceId: true,
+            workspace: { include: { organization: { select: { id: true } } } },
+          },
+        });
+
+        if (!project) throw new BadRequestException('Project not found.');
+        orgId = project.workspace.organization.id;
+      } else {
+        orgId = workspace.organizationId;
+      }
+    }
+
+    const activeSubscription = await this.prismaService.subscription.findFirst({
+      where: {
+        orgId,
+        status: SubscriptionStatus.ACTIVE,
+      },
+      include: {
+        plan: true,
+      },
+    });
+
+    if (!activeSubscription)
+      throw new BadRequestException('No active subscription found.');
+
+    return {
+      success: true,
+      message: 'Active subscription found.',
+      subscription: activeSubscription,
+    };
+  }
+
   async getSubscriptionHistory(orgId: string) {
     if (!orgId)
       throw new BadRequestException('Please provide organization ID.');
