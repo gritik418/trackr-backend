@@ -301,17 +301,6 @@ export class OrganizationsService {
 
     await this.prismaService.organization.delete({ where: { id: orgId } });
 
-    await this.auditLogsService.createLog({
-      action: AuditAction.ORGANIZATION_DELETE,
-      entityType: AuditEntityType.ORGANIZATION,
-      entityId: orgId,
-      organizationId: orgId,
-      userId: req.user.id,
-      details: { name: organization.name },
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-
     return {
       success: true,
       message: 'Organization deleted successfully.',

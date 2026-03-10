@@ -56,7 +56,7 @@ model AuditLog {
   userAgent      String?
   createdAt      DateTime        @default(now())
 
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   workspace    Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -92,7 +92,7 @@ model OrganizationMember {
   role           OrgRole  @default(MEMBER)
   joinedAt       DateTime @default(now())
 
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
@@ -339,7 +339,7 @@ model Subscription {
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
-  organization Organization @relation(fields: [orgId], references: [id])
+  organization Organization @relation(fields: [orgId], references: [id],onDelete: Cascade)
   plan         Plan         @relation(fields: [planId], references: [id])
 }
 
