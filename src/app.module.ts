@@ -26,8 +26,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
-          host: config.get<string>('REDIS_HOST'),
-          port: Number(config.get<number>('REDIS_PORT')),
+          // host: config.get<string>('REDIS_HOST'),
+          // port: Number(config.get<string>('REDIS_PORT')),
+          url: config.get<string>('REDIS_URL'),
         },
       }),
     }),
