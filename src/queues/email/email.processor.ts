@@ -27,7 +27,9 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
     super();
 
     this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
@@ -172,12 +174,16 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
 
     const html = template(data);
 
-    await this.transporter.sendMail({
-      from: this.fromEmail,
-      to,
-      subject,
-      html,
-      text,
-    });
+    try {
+      await this.transporter.sendMail({
+        from: this.fromEmail,
+        to,
+        subject,
+        html,
+        text,
+      });
+    } catch (error) {
+      console.error('❌ Failed to send email:', error);
+    }
   }
 }
