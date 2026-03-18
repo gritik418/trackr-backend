@@ -87,13 +87,14 @@ export class DirectEmailService extends EmailProducer {
 
     const html = template(data);
     try {
-      await this.transporter.sendMail({
+      const res = await this.transporter.sendMail({
         from: this.fromEmail,
         to,
         subject,
         html,
         text,
       });
+      console.log(res);
     } catch (error) {
       console.error('❌ Failed to send email:', error);
     }
