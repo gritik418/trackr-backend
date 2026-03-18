@@ -1,27 +1,27 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
-import { EMAIL_QUEUE, EMAIL_JOBS } from './email.constants';
-import * as nodemailer from 'nodemailer';
-import { VerificationEmailDTO } from './dto/verification-email.dto';
-import { ConfigService } from '@nestjs/config';
-import { join } from 'path';
-import { readFile } from 'fs/promises';
-import handlebars from 'handlebars';
 import { OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Job } from 'bullmq';
+import handlebars from 'handlebars';
+import * as nodemailer from 'nodemailer';
+import { join } from 'path';
 import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import templateNames from './constants/template-names';
+import { EarlyAccessActivationEmailDTO } from './dto/early-access-activation-email.dto';
 import { ForgotPasswordEmailDTO } from './dto/forgot-password-email.dto';
 import { OrganizationInviteEmailDTO } from './dto/organization-invite-email.dto';
-import { WorkspaceInviteEmailDTO } from './dto/workspace-invite-email.dto';
-import { SendEmailParams } from './email.interface';
+import { VerificationEmailDTO } from './dto/verification-email.dto';
 import type { WelcomeEmailDTO } from './dto/welcome-email.dto';
-import { EarlyAccessActivationEmailDTO } from './dto/early-access-activation-email.dto';
+import { WorkspaceInviteEmailDTO } from './dto/workspace-invite-email.dto';
+import { EMAIL_JOBS, EMAIL_QUEUE, emailSubject } from './email.constants';
+import { SendEmailParams } from './email.interface';
 
 @Processor(EMAIL_QUEUE)
 export class EmailProcessor extends WorkerHost implements OnModuleInit {
-  private transporter: nodemailer.Transporter;
-  private fromEmail: string = "'Trackr' <noreply@trackr.com>";
-  private templates = new Map<string, handlebars.TemplateDelegate>();
+  protected transporter: nodemailer.Transporter;
+  protected fromEmail: string = "'Trackr' <noreply@trackr.com>";
+  protected templates = new Map<string, handlebars.TemplateDelegate>();
 
   constructor(private configService: ConfigService) {
     super();
@@ -86,7 +86,7 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
         this.sendEmail({
           to: data.email,
           data: data,
-          subject: `✅ Verify your Trackr account`,
+          subject: emailSubject[EMAIL_JOBS.SEND_VERIFICATION],
           templateName: templateNames.verification,
           text: `Hello ${data.name},\n\nPlease verify your email by clicking this link:\n${data.verificationToken}\n\nIf you didn't create an account, ignore this email.\n\nBest,\nTrackr Team`,
         });
@@ -99,7 +99,7 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
         this.sendEmail({
           to: data.email,
           data: data,
-          subject: `🔐 Reset your Trackr password`,
+          subject: emailSubject[EMAIL_JOBS.FORGOT_PASSWORD],
           templateName: templateNames.forgotPassword,
           text: `Hello ${data.name},\n\nReset your password:\n${data.resetLink}\n\nThis link expires in 1 hour.\n\nBest,\nTrackr Team`,
         });
@@ -111,7 +111,7 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
         this.sendEmail({
           to: data.email,
           data: data,
-          subject: `🎉 You've been invited to join ${data.organizationName} on Trackr`,
+          subject: emailSubject[EMAIL_JOBS.ORGANIZATION_INVITE],
           templateName: templateNames.organizationInvite,
           text: `Hello,\n\n${data.inviterName} has invited you to join ${data.organizationName} on Trackr.\n\nAccept your invitation:\n${data.inviteLink}\n\nBest,\nTrackr Team`,
         });
@@ -123,7 +123,7 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
         this.sendEmail({
           to: data.email,
           data: data,
-          subject: `🎉 You've been invited to join ${data.workspaceName} on Trackr`,
+          subject: emailSubject[EMAIL_JOBS.WORKSPACE_INVITE],
           templateName: templateNames.workspaceInvite,
           text: `Hello,\n\n${data.inviterName} has invited you to join ${data.workspaceName} on Trackr.\n\nAccept your invitation:\n${data.inviteLink}\n\nBest,\nTrackr Team`,
         });
@@ -135,7 +135,7 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
         this.sendEmail({
           to: data.email,
           data: data,
-          subject: `👋 Welcome to Trackr, ${data.name}!`,
+          subject: emailSubject[EMAIL_JOBS.WELCOME],
           templateName: templateNames.welcome,
           text: `Hello ${data.name},\n\nWelcome to Trackr! We're excited to have you on board.\n\nBest,\nTrackr Team`,
         });
@@ -146,7 +146,7 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
         this.sendEmail({
           to: data.email,
           data: data,
-          subject: `🌟 Early Access Plan Activated - Trackr`,
+          subject: emailSubject[EMAIL_JOBS.SEND_EARLY_ACCESS_ACTIVATION],
           templateName: templateNames.earlyAccessActivation,
           text: `Hello ${data.name},\n\nYour Early Access Plan on Trackr is now active. Thank you for being an early believer!\n\nBest,\nTrackr Team`,
         });

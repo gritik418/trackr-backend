@@ -19,19 +19,24 @@ import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 
+const useQueue = process.env.USE_QUEUE === 'true';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          // host: config.get<string>('REDIS_HOST'),
-          // port: Number(config.get<string>('REDIS_PORT')),
-          url: config.get<string>('REDIS_URL'),
-        },
-      }),
-    }),
+    ...(useQueue
+      ? [
+          BullModule.forRootAsync({
+            inject: [ConfigService],
+            useFactory: (config: ConfigService) => ({
+              connection: {
+                host: config.get<string>('REDIS_HOST'),
+                port: Number(config.get<string>('REDIS_PORT')),
+              },
+            }),
+          }),
+        ]
+      : []),
     PrismaModule,
     AuthModule,
     HashingModule,
