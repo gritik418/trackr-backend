@@ -220,7 +220,7 @@ export class AuthService {
       },
     });
 
-    this.emailProducer.sendVerificationEmail({
+    await this.emailProducer.sendVerificationEmail({
       email,
       name: user.name,
       verificationToken,
@@ -268,7 +268,7 @@ export class AuthService {
 
     const resetLink: string = `${this.configService.get('CLIENT_URL')}/reset-password?token=${resetToken}&email=${user.email}`;
 
-    this.emailProducer.sendForgotPasswordEmail({
+    await this.emailProducer.sendForgotPasswordEmail({
       email,
       name: user.name,
       resetLink,

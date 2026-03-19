@@ -15,9 +15,7 @@ export class DirectEmailService extends EmailProducer {
   constructor(private readonly configService: ConfigService) {
     super();
     this.transporter = nodemailer.createTransport({
-      port: 465,
-      secure: true,
-      host: 'smtp.gmail.com',
+      service: 'gmail',
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
