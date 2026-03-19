@@ -27,9 +27,10 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
     super();
 
     this.transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      secure: true,
       host: 'smtp.gmail.com',
       port: 465,
-      secure: true,
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
