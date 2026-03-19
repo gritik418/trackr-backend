@@ -15,10 +15,9 @@ export class DirectEmailService extends EmailProducer {
   constructor(private readonly configService: ConfigService) {
     super();
     this.transporter = nodemailer.createTransport({
-      service: 'Gmail',
+      port: 465,
       secure: true,
       host: 'smtp.gmail.com',
-      port: 465,
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
@@ -102,7 +101,7 @@ export class DirectEmailService extends EmailProducer {
   }
 
   async sendWelcomeEmail(data: any) {
-    this.sendEmail({
+    await this.sendEmail({
       to: data.email,
       data: data,
       subject: emailSubject[EMAIL_JOBS.WELCOME],
@@ -112,7 +111,7 @@ export class DirectEmailService extends EmailProducer {
   }
 
   async sendVerificationEmail(data: any) {
-    this.sendEmail({
+    await this.sendEmail({
       to: data.email,
       data: data,
       subject: emailSubject[EMAIL_JOBS.SEND_VERIFICATION],
@@ -122,7 +121,7 @@ export class DirectEmailService extends EmailProducer {
   }
 
   async sendForgotPasswordEmail(data: any) {
-    this.sendEmail({
+    await this.sendEmail({
       to: data.email,
       data: data,
       subject: emailSubject[EMAIL_JOBS.FORGOT_PASSWORD],
@@ -132,7 +131,7 @@ export class DirectEmailService extends EmailProducer {
   }
 
   async sendOrganizationInviteEmail(data: any) {
-    this.sendEmail({
+    await this.sendEmail({
       to: data.email,
       data: data,
       subject: emailSubject[EMAIL_JOBS.ORGANIZATION_INVITE],
@@ -142,7 +141,7 @@ export class DirectEmailService extends EmailProducer {
   }
 
   async sendWorkspaceInviteEmail(data: any) {
-    this.sendEmail({
+    await this.sendEmail({
       to: data.email,
       data: data,
       subject: emailSubject[EMAIL_JOBS.WORKSPACE_INVITE],
@@ -152,7 +151,7 @@ export class DirectEmailService extends EmailProducer {
   }
 
   async sendEarlyAccessActivationEmail(data: any) {
-    this.sendEmail({
+    await this.sendEmail({
       to: data.email,
       data: data,
       subject: emailSubject[EMAIL_JOBS.SEND_EARLY_ACCESS_ACTIVATION],

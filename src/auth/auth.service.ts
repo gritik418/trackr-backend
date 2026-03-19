@@ -97,7 +97,7 @@ export class AuthService {
       },
     });
 
-    this.emailProducer.sendVerificationEmail({
+    await this.emailProducer.sendVerificationEmail({
       email,
       name,
       verificationToken,
