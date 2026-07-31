@@ -3,7 +3,6 @@ import { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
 import handlebars from 'handlebars';
-import * as nodemailer from 'nodemailer';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
@@ -199,10 +198,10 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
       });
 
       if (error) {
-        return console.error({ error });
+        console.error('❌ Failed to send email:', error);
       }
 
-      console.log({ data });
+      return { data, error };
     } catch (error) {
       console.error('❌ Failed to send email:', error);
     }

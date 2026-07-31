@@ -1,32 +1,36 @@
 import { Injectable } from '@nestjs/common';
-import { EMAIL_JOBS, emailSubject } from '../email.constants';
-import templateNames from '../constants/template-names';
-import { join } from 'path';
+import { ConfigService } from '@nestjs/config';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
-import nodemailer from 'nodemailer';
 import handlebars from 'handlebars';
+import { join } from 'path';
+import { Resend } from 'resend';
+import templateNames from '../constants/template-names';
+import { EMAIL_JOBS, emailSubject } from '../email.constants';
 import { SendEmailParams } from '../email.interface';
-import { ConfigService } from '@nestjs/config';
 import { EmailProducer } from '../email.producer';
 
 @Injectable()
 export class DirectEmailService extends EmailProducer {
+  private resend: Resend | null = null;
+
   constructor(private readonly configService: ConfigService) {
     super();
-    this.transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
-      },
-    });
+    // this.transporter = nodemailer.createTransport({
+    //   host: 'smtp.gmail.com',
+    //   port: 587,
+    //   secure: false,
+    //   auth: {
+    //     user: this.configService.get<string>('SMTP_USER'),
+    //     pass: this.configService.get<string>('SMTP_PASS'),
+    //   },
+    // });
+
+    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
   }
 
   private templates = new Map<string, handlebars.TemplateDelegate>();
-  private transporter: nodemailer.Transporter;
+  // private transporter: nodemailer.Transporter;
   private fromEmail: string = "'Trackr' <noreply@trackr.com>";
 
   async onModuleInit() {
@@ -87,24 +91,42 @@ export class DirectEmailService extends EmailProducer {
 
     const html = template(data);
     try {
-      await new Promise((resolve, reject) => {
-        this.transporter.sendMail(
-          {
-            from: this.fromEmail,
-            to,
-            subject,
-            html,
-            text,
-          },
-          (error, info) => {
-            if (error) {
-              reject(error);
-            } else {
-              resolve(info);
-            }
-          },
-        );
+      if (!this.resend) {
+        throw new Error('Resend not initialized');
+      }
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to,
+        subject,
+        html,
+        text,
       });
+
+      if (error) {
+        console.error('❌ Failed to send email:', error);
+      }
+
+      return { data, error };
+
+      // await new Promise((resolve, reject) => {
+      //   this.transporter.sendMail(
+      //     {
+      //       from: this.fromEmail,
+      //       to,
+      //       subject,
+      //       html,
+      //       text,
+      //     },
+      //     (error, info) => {
+      //       if (error) {
+      //         reject(error);
+      //       } else {
+      //         resolve(info);
+      //       }
+      //     },
+      //   );
+      // });
     } catch (error) {
       console.error('❌ Failed to send email:', error);
     }
