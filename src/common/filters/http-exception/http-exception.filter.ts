@@ -16,7 +16,9 @@ export class HttpExceptionFilter<T> implements ExceptionFilter {
       exception instanceof HttpException ? exception.getStatus() : 500;
     const message =
       exception instanceof HttpException
-        ? exception.getResponse()
+        ? typeof exception.getResponse() === 'string'
+          ? exception.getResponse()
+          : (exception.getResponse() as { message?: string }).message
         : 'Internal server error';
 
     response.status(status).json({
