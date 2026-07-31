@@ -16,23 +16,28 @@ import type { WelcomeEmailDTO } from './dto/welcome-email.dto';
 import { WorkspaceInviteEmailDTO } from './dto/workspace-invite-email.dto';
 import { EMAIL_JOBS, EMAIL_QUEUE, emailSubject } from './email.constants';
 import { SendEmailParams } from './email.interface';
+import { Resend } from 'resend';
 
 @Processor(EMAIL_QUEUE)
 export class EmailProcessor extends WorkerHost implements OnModuleInit {
-  protected transporter: nodemailer.Transporter;
+  // protected transporter: nodemailer.Transporter;
   protected fromEmail: string = "'Trackr' <noreply@trackr.com>";
   protected templates = new Map<string, handlebars.TemplateDelegate>();
+
+  protected resend: Resend | null = null;
 
   constructor(private configService: ConfigService) {
     super();
 
-    this.transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
-      },
-    });
+    // this.transporter = nodemailer.createTransport({
+    //   service: 'gmail',
+    //   auth: {
+    //     user: this.configService.get<string>('SMTP_USER'),
+    //     pass: this.configService.get<string>('SMTP_PASS'),
+    //   },
+    // });
+
+    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
   }
 
   async onModuleInit() {
@@ -173,13 +178,31 @@ export class EmailProcessor extends WorkerHost implements OnModuleInit {
     const html = template(data);
 
     try {
-      await this.transporter.sendMail({
+      // await this.transporter.sendMail({
+      //   from: this.fromEmail,
+      //   to,
+      //   subject,
+      //   html,
+      //   text,
+      // });
+
+      if (!this.resend) {
+        throw new Error('Resend not initialized');
+      }
+
+      const { data, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to,
         subject,
         html,
         text,
       });
+
+      if (error) {
+        return console.error({ error });
+      }
+
+      console.log({ data });
     } catch (error) {
       console.error('❌ Failed to send email:', error);
     }
