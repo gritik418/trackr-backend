@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import handlebars from 'handlebars';
+import nodemailer from 'nodemailer';
 import { join } from 'path';
-import { Resend } from 'resend';
 import templateNames from '../constants/template-names';
 import { EMAIL_JOBS, emailSubject } from '../email.constants';
 import { SendEmailParams } from '../email.interface';
@@ -12,29 +11,28 @@ import { EmailProducer } from '../email.producer';
 
 @Injectable()
 export class DirectEmailService extends EmailProducer {
-  private resend: Resend | null = null;
+  private transporter: nodemailer.Transporter;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor() {
     super();
-    // this.transporter = nodemailer.createTransport({
-    //   host: 'smtp.gmail.com',
-    //   port: 587,
-    //   secure: false,
-    //   auth: {
-    //     user: this.configService.get<string>('SMTP_USER'),
-    //     pass: this.configService.get<string>('SMTP_PASS'),
-    //   },
-    // });
 
-    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+    this.transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
   }
 
   private templates = new Map<string, handlebars.TemplateDelegate>();
-  // private transporter: nodemailer.Transporter;
   private fromEmail: string = "'Trackr' <noreply@trackr.com>";
 
   async onModuleInit() {
     await this.loadAllTemplates();
+    await this.transporter.verify();
   }
 
   private getTemplatePath(template: string): string {
@@ -83,52 +81,25 @@ export class DirectEmailService extends EmailProducer {
     subject,
     text,
     data,
-  }: SendEmailParams<T>) {
+  }: SendEmailParams<T>): Promise<void> {
     const template = this.templates.get(templateName);
+
     if (!template) {
       throw new Error(`${templateName} template not loaded`);
     }
 
     const html = template(data);
-    try {
-      if (!this.resend) {
-        throw new Error('Resend not initialized');
-      }
 
-      const { data, error } = await this.resend.emails.send({
+    try {
+      await this.transporter.sendMail({
         from: this.fromEmail,
         to,
         subject,
         html,
         text,
       });
-
-      if (error) {
-        console.error('❌ Failed to send email:', error);
-      }
-
-      return { data, error };
-
-      // await new Promise((resolve, reject) => {
-      //   this.transporter.sendMail(
-      //     {
-      //       from: this.fromEmail,
-      //       to,
-      //       subject,
-      //       html,
-      //       text,
-      //     },
-      //     (error, info) => {
-      //       if (error) {
-      //         reject(error);
-      //       } else {
-      //         resolve(info);
-      //       }
-      //     },
-      //   );
-      // });
     } catch (error) {
-      console.error('❌ Failed to send email:', error);
+      throw error;
     }
   }
 
