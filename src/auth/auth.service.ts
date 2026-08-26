@@ -83,30 +83,38 @@ export class AuthService {
       8,
     );
 
+    const isEmailVerificationRequired =
+      this.configService.get<string>('EMAIL_VERIFICATION_REQUIRED') === 'true';
+
     await this.prismaService.user.create({
       data: {
         name,
         email,
         username,
         password: hashedPassword,
-        isVerified: false,
-        verificationToken: hashedVerificationToken,
-        verificationTokenExpiry: new Date(
-          Date.now() + VERIFICATION_TOKEN_EXPIRY_MS,
-        ),
+        isVerified: isEmailVerificationRequired ? false : true,
+        verificationToken: isEmailVerificationRequired
+          ? hashedVerificationToken
+          : null,
+        verificationTokenExpiry: isEmailVerificationRequired
+          ? new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MS)
+          : null,
       },
     });
 
-    await this.emailProducer.sendVerificationEmail({
-      email,
-      name,
-      verificationToken,
-    });
+    if (isEmailVerificationRequired) {
+      await this.emailProducer.sendVerificationEmail({
+        email,
+        name,
+        verificationToken,
+      });
+    }
 
     return {
       success: true,
-      message:
-        'Your account has been created! Check your email to verify your account.',
+      message: isEmailVerificationRequired
+        ? 'Your account has been created! Check your email to verify your account.'
+        : 'Account created successfully.',
     };
   }
 
