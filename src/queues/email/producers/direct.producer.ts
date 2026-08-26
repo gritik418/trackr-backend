@@ -32,7 +32,15 @@ export class DirectEmailService extends EmailProducer {
 
   async onModuleInit() {
     await this.loadAllTemplates();
-    await this.transporter.verify();
+
+    this.transporter
+      .verify()
+      .then(() => {
+        console.log('SMTP server is ready');
+      })
+      .catch((error) => {
+        console.error('❌ Failed to connect to SMTP server:', error);
+      });
   }
 
   private getTemplatePath(template: string): string {
